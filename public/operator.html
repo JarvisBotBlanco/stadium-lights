@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎛️ Operador — Stadium Lights</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      min-height: 100vh;
+    }
+
+    .header {
+      background: #161b22;
+      padding: 16px 24px;
+      border-bottom: 1px solid #30363d;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header h1 { font-size: 1.3rem; }
+    .header .stats {
+      display: flex;
+      gap: 20px;
+      font-size: 0.9rem;
+      color: #8b949e;
+    }
+    .header .stats span { color: #58a6ff; font-weight: 600; }
+
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 0;
+      height: calc(100vh - 60px);
+    }
+
+    /* ===== Panel izquierdo: Vista previa ===== */
+    .preview-panel {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .preview-panel h2 {
+      font-size: 1rem;
+      color: #8b949e;
+      margin-bottom: 16px;
+      align-self: flex-start;
+    }
+
+    .preview-grid {
+      display: grid;
+      gap: 4px;
+      width: 100%;
+      max-width: 700px;
+    }
+    .preview-cell {
+      aspect-ratio: 1;
+      border-radius: 6px;
+      background: #161b22;
+      border: 1px solid #21262d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.6rem;
+      color: #484f58;
+      transition: all 0.15s;
+      position: relative;
+    }
+    .preview-cell.active {
+      border-color: #58a6ff;
+    }
+    .preview-cell .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #21262d;
+      transition: all 0.15s;
+    }
+    .preview-cell.connected .dot {
+      background: #3fb950;
+      box-shadow: 0 0 6px rgba(63,185,80,0.5);
+    }
+    .preview-cell.showing .dot {
+      width: 100%;
+      height: 100%;
+      border-radius: 6px;
+    }
+
+    /* ===== Panel derecho: Controles ===== */
+    .control-panel {
+      background: #161b22;
+      border-left: 1px solid #30363d;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .control-panel h2 {
+      font-size: 0.9rem;
+      color: #8b949e;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+
+    .section {
+      margin-bottom: 24px;
+    }
+
+    .btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 12px 16px;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      background: #21262d;
+      color: #e6edf3;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .btn:hover { background: #30363d; border-color: #484f58; }
+    .btn:active { transform: scale(0.96); }
+    .btn.primary { background: #238636; border-color: #2ea043; }
+    .btn.primary:hover { background: #2ea043; }
+    .btn.danger { background: #da3633; border-color: #f85149; }
+    .btn.danger:hover { background: #f85149; }
+    .btn.full { grid-column: 1 / -1; }
+
+    /* Color picker */
+    .color-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .color-row input[type="color"] {
+      width: 40px;
+      height: 40px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: none;
+    }
+    .color-row input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+    .color-row input[type="color"]::-webkit-color-swatch { border-radius: 6px; border: 2px solid #30363d; }
+
+    .preset-colors {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .preset-color {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .preset-color:hover { border-color: #58a6ff; transform: scale(1.1); }
+
+    /* Quick patterns */
+    .pattern-btn {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 6px;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      background: #21262d;
+      color: #e6edf3;
+      font-size: 0.85rem;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.15s;
+    }
+    .pattern-btn:hover { background: #30363d; }
+    .pattern-btn .emoji { margin-right: 8px; }
+
+    /* Event ID input */
+    .event-input {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .event-input input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      background: #0d1117;
+      color: #e6edf3;
+      font-size: 0.9rem;
+    }
+    .event-input input:focus { outline: none; border-color: #58a6ff; }
+
+    .log {
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 8px;
+      padding: 10px;
+      font-family: 'SF Mono', monospace;
+      font-size: 0.75rem;
+      color: #8b949e;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    .log .entry { margin-bottom: 4px; }
+    .log .time { color: #484f58; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>🎛️ Panel de Operador</h1>
+    <div class="stats">
+      Conectados: <span id="participantCount">0</span>
+      &nbsp;|&nbsp;
+      Evento: <span id="currentEvent">demo</span>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Preview -->
+    <div class="preview-panel">
+      <h2>Vista Previa del Estadio</h2>
+      <div class="preview-grid" id="previewGrid"></div>
+    </div>
+
+    <!-- Controles -->
+    <div class="control-panel">
+      <!-- Evento -->
+      <div class="section">
+        <h2>Evento</h2>
+        <div class="event-input">
+          <input type="text" id="eventIdInput" value="demo" placeholder="ID del evento">
+          <button class="btn primary" onclick="connectOps()">Conectar</button>
+        </div>
+        <div style="font-size:0.8rem;color:#484f58;">
+          QR URL: <span id="qrUrl" style="color:#58a6ff;">---</span>
+        </div>
+      </div>
+
+      <!-- Color sólido -->
+      <div class="section">
+        <h2>Color Sólido</h2>
+        <div class="color-row">
+          <input type="color" id="colorPicker" value="#007AFF">
+          <button class="btn primary" onclick="sendColor()" style="flex:1">Aplicar</button>
+          <button class="btn danger" onclick="sendOff()">Off</button>
+        </div>
+        <div class="preset-colors" id="presetColors"></div>
+      </div>
+
+      <!-- Patrones rápidos -->
+      <div class="section">
+        <h2>Patrones</h2>
+        <button class="pattern-btn" onclick="sendStrobe()">
+          <span class="emoji">⚡</span> Estroboscopio
+        </button>
+        <button class="pattern-btn" onclick="sendWave('left-right')">
+          <span class="emoji">🌊</span> Ola →
+        </button>
+        <button class="pattern-btn" onclick="sendWave('right-left')">
+          <span class="emoji">🌊</span> Ola ←
+        </button>
+        <button class="pattern-btn" onclick="sendWave('top-bottom')">
+          <span class="emoji">🌊</span> Ola ↓
+        </button>
+        <button class="pattern-btn" onclick="sendRainbow()">
+          <span class="emoji">🌈</span> Arcoíris
+        </button>
+        <button class="pattern-btn" onclick="sendHeartbeat()">
+          <span class="emoji">❤️</span> Latido
+        </button>
+        <button class="pattern-btn" onclick="sendFlagMexico()">
+          <span class="emoji">🇲🇽</span> Bandera MX
+        </button>
+        <button class="pattern-btn" onclick="sendFire()">
+          <span class="emoji">🔥</span> Fuego
+        </button>
+      </div>
+
+      <!-- Texto -->
+      <div class="section">
+        <h2>Texto en Pantalla</h2>
+        <div class="event-input">
+          <input type="text" id="textInput" value="GOAL" placeholder="Texto" maxlength="20">
+          <button class="btn primary" onclick="sendText()">Mostrar</button>
+        </div>
+      </div>
+
+      <!-- Log -->
+      <div class="section">
+        <h2>Log</h2>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    let socket;
+    let eventId = 'demo';
+    let gridRows = 6;
+    let gridCols = 8;
+    let connectedClients = [];
+
+    const PRESETS = [
+      '#FFFFFF', '#FF0000', '#00FF00', '#0000FF',
+      '#FFFF00', '#FF00FF', '#00FFFF', '#FF6600',
+      '#9B59B6', '#2ECC71', '#E74C3C', '#3498DB',
+      '#F1C40F', '#1ABC9C', '#E67E22', '#007AFF'
+    ];
+
+    function init() {
+      buildPresets();
+      buildPreview();
+      connectOps();
+      updateQrUrl();
+    }
+
+    // ===== Preset colors =====
+    function buildPresets() {
+      const container = document.getElementById('presetColors');
+      PRESETS.forEach(color => {
+        const el = document.createElement('div');
+        el.className = 'preset-color';
+        el.style.background = color;
+        el.onclick = () => {
+          document.getElementById('colorPicker').value = color;
+          sendColorDirect(color);
+        };
+        container.appendChild(el);
+      });
+    }
+
+    // ===== Preview grid =====
+    function buildPreview() {
+      const grid = document.getElementById('previewGrid');
+      grid.innerHTML = '';
+      grid.style.gridTemplateColumns = `repeat(${gridCols}, 1fr)`;
+
+      for (let r = 0; r < gridRows; r++) {
+        for (let c = 0; c < gridCols; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'preview-cell';
+          cell.id = `cell-${r}-${c}`;
+          cell.innerHTML = '<div class="dot"></div>';
+          cell.title = `Fila ${r+1}, Col ${c+1}`;
+          cell.onclick = () => {
+            const color = document.getElementById('colorPicker').value;
+            sendPixel(r, c, color);
+            showOnCell(r, c, color);
+          };
+          grid.appendChild(cell);
+        }
+      }
+    }
+
+    function updatePreviewGrid() {
+      // Marcar celdas conectadas
+      document.querySelectorAll('.preview-cell').forEach(cell => {
+        cell.classList.remove('connected');
+      });
+      connectedClients.forEach(client => {
+        const cell = document.getElementById(`cell-${client.row}-${client.col}`);
+        if (cell) cell.classList.add('connected');
+      });
+    }
+
+    function showOnCell(row, col, color) {
+      const cell = document.getElementById(`cell-${row}-${col}`);
+      if (cell) {
+        const dot = cell.querySelector('.dot');
+        cell.classList.add('showing');
+        dot.style.background = color;
+        dot.style.boxShadow = `0 0 10px ${color}`;
+      }
+    }
+
+    function clearAllCells() {
+      document.querySelectorAll('.preview-cell').forEach(cell => {
+        cell.classList.remove('showing');
+        const dot = cell.querySelector('.dot');
+        if (cell.classList.contains('connected')) {
+          dot.style.background = '#3fb950';
+        } else {
+          dot.style.background = '#21262d';
+        }
+        dot.style.boxShadow = '';
+      });
+    }
+
+    // ===== Socket connection =====
+    function connectOps() {
+      eventId = document.getElementById('eventIdInput').value || 'demo';
+      document.getElementById('currentEvent').textContent = eventId;
+      updateQrUrl();
+
+      if (socket) socket.disconnect();
+
+      socket = io();
+
+      socket.on('connect', () => {
+        socket.emit('join_ops', { eventId });
+        addLog('Conectado como operador');
+      });
+
+      socket.on('ops_ready', (data) => {
+        document.getElementById('participantCount').textContent = data.participantCount;
+        connectedClients = data.clients || [];
+        if (data.grid) {
+          gridRows = data.grid.rows;
+          gridCols = data.grid.cols;
+          buildPreview();
+        }
+        updatePreviewGrid();
+        addLog(`${data.participantCount} participantes conectados`);
+      });
+
+      socket.on('participant_update', (data) => {
+        document.getElementById('participantCount').textContent = data.count;
+        connectedClients = data.clients || [];
+        updatePreviewGrid();
+        addLog(`Participantes: ${data.count}`);
+      });
+
+      socket.on('pattern_sent', (data) => {
+        addLog(`Patrón enviado: ${data.name || data.action}`);
+      });
+    }
+
+    function updateQrUrl() {
+      const url = `${window.location.origin}/?event=${eventId}`;
+      document.getElementById('qrUrl').textContent = url;
+    }
+
+    // ===== Enviar comandos =====
+    function emit(action, data = {}) {
+      socket.emit('trigger_pattern', {
+        eventId,
+        pattern: { action, ...data }
+      });
+    }
+
+    function sendColor() {
+      const color = document.getElementById('colorPicker').value;
+      sendColorDirect(color);
+    }
+
+    function sendColorDirect(color) {
+      emit('color', { color, name: `Color ${color}` });
+      // Preview: mostrar en todas las celdas conectadas
+      connectedClients.forEach(c => showOnCell(c.row, c.col, color));
+      addLog(`Color: ${color}`);
+    }
+
+    function sendOff() {
+      emit('off', { name: 'Off' });
+      clearAllCells();
+      addLog('Todo apagado');
+    }
+
+    function sendStrobe() {
+      const color = document.getElementById('colorPicker').value;
+      emit('strobe', {
+        interval: 150,
+        duration: 3000,
+        color,
+        name: 'Estroboscopio'
+      });
+      // Preview animation
+      let on = false;
+      const interval = setInterval(() => {
+        on = !on;
+        if (on) {
+          connectedClients.forEach(c => showOnCell(c.row, c.col, color));
+        } else {
+          clearAllCells();
+        }
+      }, 150);
+      setTimeout(() => { clearInterval(interval); clearAllCells(); }, 3000);
+      addLog('Estroboscopio 3s');
+    }
+
+    function sendWave(direction) {
+      const color = document.getElementById('colorPicker').value;
+      emit('wave', {
+        direction,
+        speed: 200,
+        color,
+        name: `Ola ${direction}`
+      });
+      // Preview animation
+      const isHorizontal = direction.includes('left') || direction.includes('right');
+      const steps = isHorizontal ? gridCols : gridRows;
+      for (let i = 0; i < steps; i++) {
+        const delay = i * 200;
+        const idx = (direction === 'right-left' || direction === 'bottom-top')
+          ? (steps - 1 - i) : i;
+
+        setTimeout(() => {
+          // Clear previous
+          clearAllCells();
+          // Show current column/row
+          if (isHorizontal) {
+            for (let r = 0; r < gridRows; r++) {
+              const cell = document.getElementById(`cell-${r}-${idx}`);
+              if (cell && cell.classList.contains('connected')) {
+                showOnCell(r, idx, color);
+              }
+            }
+          } else {
+            for (let c = 0; c < gridCols; c++) {
+              const cell = document.getElementById(`cell-${idx}-${c}`);
+              if (cell && cell.classList.contains('connected')) {
+                showOnCell(idx, c, color);
+              }
+            }
+          }
+        }, delay);
+      }
+      setTimeout(() => clearAllCells(), steps * 200 + 600);
+      addLog(`Ola ${direction}`);
+    }
+
+    function sendRainbow() {
+      emit('rainbow', { duration: 5000, name: 'Arcoíris' });
+      // Preview
+      connectedClients.forEach(c => {
+        const hue = ((c.col / gridCols) * 360 + (c.row / gridRows) * 30) % 360;
+        showOnCell(c.row, c.col, `hsl(${hue}, 100%, 50%)`);
+      });
+      setTimeout(() => clearAllCells(), 5000);
+      addLog('Arcoíris 5s');
+    }
+
+    function sendHeartbeat() {
+      const red = '#FF0000';
+      // Latido: rojo → off → rojo → off
+      const frames = [
+        { all: red, intervalMs: 300 },
+        { all: '#000000', intervalMs: 200 },
+        { all: red, intervalMs: 300 },
+        { all: '#000000', intervalMs: 800 },
+        { all: red, intervalMs: 300 },
+        { all: '#000000', intervalMs: 200 },
+        { all: red, intervalMs: 300 },
+        { all: '#000000', intervalMs: 1500 }
+      ];
+      emit('sequence', { frames, intervalMs: 300, name: 'Latido' });
+      addLog('Latido');
+    }
+
+    function sendFlagMexico() {
+      // Bandera vertical: verde-blanco-rojo
+      const frames = [];
+      for (let stripe = 0; stripe < 3; stripe++) {
+        const color = stripe === 0 ? '#006847' : stripe === 1 ? '#FFFFFF' : '#CE1126';
+        const cells = [];
+        const colStart = Math.floor(stripe * gridCols / 3);
+        const colEnd = Math.floor((stripe + 1) * gridCols / 3);
+        for (let r = 0; r < gridRows; r++) {
+          for (let c = colStart; c < colEnd; c++) {
+            cells.push([r, c, color]);
+          }
+        }
+        frames.push({ cells, intervalMs: 1 });
+      }
+
+      socket.emit('trigger_pattern', {
+        eventId,
+        pattern: {
+          action: 'sequence',
+          frames,
+          intervalMs: 1,
+          name: 'Bandera MX'
+        }
+      });
+
+      // Preview
+      for (let c = 0; c < gridCols; c++) {
+        const stripe = Math.floor(c / (gridCols / 3));
+        const color = stripe === 0 ? '#006847' : stripe === 1 ? '#FFFFFF' : '#CE1126';
+        for (let r = 0; r < gridRows; r++) {
+          showOnCell(r, c, color);
+        }
+      }
+      addLog('Bandera MX');
+    }
+
+    function sendFire() {
+      const frames = [];
+      const fireColors = ['#FF0000', '#FF3300', '#FF6600', '#FF9900', '#FFCC00', '#FFFF00'];
+      for (let i = 0; i < 10; i++) {
+        const cells = [];
+        for (let r = 0; r < gridRows; r++) {
+          for (let c = 0; c < gridCols; c++) {
+            const colorIdx = Math.floor(Math.random() * fireColors.length);
+            cells.push([r, c, fireColors[colorIdx]]);
+          }
+        }
+        frames.push({ cells, intervalMs: 200 });
+      }
+      emit('sequence', { frames, intervalMs: 200, name: 'Fuego' });
+      addLog('Fuego 🔥');
+    }
+
+    function sendText() {
+      const text = document.getElementById('textInput').value.toUpperCase();
+      // Mostrar color con flash que dura según texto
+      const color = document.getElementById('colorPicker').value;
+      emit('flash', {
+        color,
+        duration: text.length * 500,
+        name: `Texto: ${text}`
+      });
+      addLog(`Texto: ${text}`);
+    }
+
+    function sendPixel(row, col, color) {
+      socket.emit('set_pixel', { eventId, row, col, color });
+      showOnCell(row, col, color);
+      addLog(`Pixel [${row},${col}] = ${color}`);
+    }
+
+    // ===== Log =====
+    function addLog(msg) {
+      const log = document.getElementById('log');
+      const time = new Date().toLocaleTimeString();
+      log.innerHTML += `<div class="entry"><span class="time">${time}</span> ${msg}</div>`;
+      log.scrollTop = log.scrollHeight;
+    }
+
+    // ===== Init =====
+    init();
+  </script>
+</body>
+</html>
