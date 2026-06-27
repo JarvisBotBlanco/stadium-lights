@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎛️ Operador — Stadium Lights</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #000;
+      color: #e6edf3;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ===== Header ===== */
+    .header {
+      background: rgba(20,20,30,0.95);
+      backdrop-filter: blur(10px);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      height: 56px;
+    }
+    .header .left { display: flex; align-items: center; gap: 12px; }
+    .header h1 { font-size: 1rem; font-weight: 600; }
+    .header .badge {
+      background: rgba(0,122,255,0.15);
+      border: 1px solid rgba(0,122,255,0.3);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      color: #007AFF;
+    }
+    .header .stats {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+    .stat {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: #666;
+    }
+    .stat .num {
+      color: #007AFF;
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+    .stat .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #3fb950;
+      animation: pulse-dot 2s infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ===== Main layout ===== */
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      height: calc(100vh - 56px);
+    }
+
+    /* ===== Preview ===== */
+    .preview {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+    }
+    .preview-label {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      font-size: 0.7rem;
+      color: #333;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .stadium-preview {
+      position: relative;
+      width: 100%;
+      max-width: 500px;
+      aspect-ratio: 1.4;
+    }
+    .stadium-outline {
+      position: absolute;
+      inset: 0;
+      border-radius: 50% / 40%;
+      border: 2px solid #111;
+      background: #080808;
+    }
+    .field {
+      position: absolute;
+      top: 25%; left: 20%; right: 20%; bottom: 25%;
+      border-radius: 8px;
+      border: 1px solid #1a2a1a;
+      background: #0a150a;
+    }
+    .field::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      border: 1px solid #1a2a1a;
+      transform: translate(-50%, -50%);
+    }
+
+    .zone-preview {
+      position: absolute;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: #111;
+      border: 1.5px solid #1a1a2e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.6rem;
+      color: #333;
+      transition: all 0.15s;
+    }
+    .zone-preview.connected {
+      border-color: #1a3a1a;
+      background: #0a1a0a;
+    }
+    .zone-preview.active {
+      border-color: #007AFF;
+      background: #007AFF;
+      color: white;
+      box-shadow: 0 0 12px rgba(0,122,255,0.4);
+    }
+    .zone-preview .count {
+      position: absolute;
+      bottom: -14px;
+      font-size: 0.5rem;
+      color: #333;
+    }
+
+    /* ===== Controls panel ===== */
+    .controls {
+      background: rgba(15,15,25,0.95);
+      backdrop-filter: blur(10px);
+      border-left: 1px solid rgba(255,255,255,0.06);
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .section {
+      margin-bottom: 20px;
+    }
+    .section-title {
+      font-size: 0.65rem;
+      color: #444;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+
+    /* Event input */
+    .event-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .input {
+      flex: 1;
+      padding: 10px 12px;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 8px;
+      color: #e6edf3;
+      font-size: 0.85rem;
+    }
+    .input:focus { outline: none; border-color: #007AFF; }
+
+    /* Buttons */
+    .btn {
+      padding: 10px 16px;
+      border: 1px solid #222;
+      border-radius: 8px;
+      background: #111;
+      color: #e6edf3;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .btn:hover { background: #1a1a2a; }
+    .btn:active { transform: scale(0.96); }
+    .btn.green { background: #0a2a0a; border-color: #1a4a1a; color: #3fb950; }
+    .btn.green:hover { background: #1a3a1a; }
+    .btn.red { background: #2a0a0a; border-color: #4a1a1a; color: #f85149; }
+    .btn.red:hover { background: #3a1a1a; }
+    .btn.blue { background: #0a1a3a; border-color: #1a2a5a; color: #58a6ff; }
+    .btn.blue:hover { background: #1a2a4a; }
+
+    .btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    .btn-full { grid-column: 1 / -1; }
+
+    /* Color presets */
+    .colors {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .color-swatch {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .color-swatch:hover { border-color: #007AFF; transform: scale(1.15); }
+    .color-swatch.active { border-color: white; }
+
+    .color-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .color-row input[type="color"] {
+      width: 36px;
+      height: 36px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: none;
+    }
+    .color-row input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+    .color-row input[type="color"]::-webkit-color-swatch { border-radius: 6px; border: 2px solid #333; }
+
+    /* Pattern buttons */
+    .pattern-btn {
+      width: 100%;
+      padding: 10px 12px;
+      margin-bottom: 4px;
+      border: 1px solid #1a1a2a;
+      border-radius: 8px;
+      background: #0a0a15;
+      color: #888;
+      font-size: 0.8rem;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .pattern-btn:hover { background: #151525; color: #e6edf3; }
+    .pattern-btn .icon { font-size: 1rem; }
+
+    /* Quick actions bar */
+    .quick-bar {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .quick-btn {
+      flex: 1;
+      padding: 12px 8px;
+      border-radius: 10px;
+      border: 1px solid #222;
+      background: #111;
+      color: #666;
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .quick-btn:hover { background: #1a1a2a; color: #e6edf3; }
+    .quick-btn:active { transform: scale(0.92); }
+    .quick-btn .label {
+      display: block;
+      font-size: 0.55rem;
+      margin-top: 4px;
+      color: #444;
+    }
+
+    /* Log */
+    .log {
+      background: #080808;
+      border: 1px solid #111;
+      border-radius: 8px;
+      padding: 8px;
+      font-family: 'SF Mono', monospace;
+      font-size: 0.65rem;
+      color: #444;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+    .log .entry { margin-bottom: 2px; }
+    .log .time { color: #333; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="left">
+      <h1>🏟️ Stadium Lights</h1>
+      <div class="badge" id="currentEvent">demo</div>
+    </div>
+    <div class="stats">
+      <div class="stat">
+        <div class="dot"></div>
+        <span class="num" id="count">0</span>
+        <span>conectados</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- Preview -->
+    <div class="preview">
+      <div class="preview-label">Vista previa del estadio</div>
+      <div class="stadium-preview" id="stadiumPreview">
+        <div class="stadium-outline"></div>
+        <div class="field"></div>
+        <!-- Zonas se generan dinámicamente -->
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <!-- Quick actions -->
+      <div class="section">
+        <div class="quick-bar">
+          <button class="quick-btn red" onclick="sendOff()">
+            ⏻<span class="label">Off</span>
+          </button>
+          <button class="quick-btn" onclick="sendColor()" style="color:#3fb950">
+            💡<span class="label">Color</span>
+          </button>
+          <button class="quick-btn" onclick="sendStrobe()" style="color:#f0883e">
+            ⚡<span class="label">Strobe</span>
+          </button>
+          <button class="quick-btn" onclick="sendPulse()" style="color:#f85149">
+            ❤️<span class="label">Pulse</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Color -->
+      <div class="section">
+        <div class="section-title">Color</div>
+        <div class="color-row" style="margin-bottom:8px">
+          <input type="color" id="colorPicker" value="#007AFF">
+          <button class="btn green" onclick="sendColor()" style="flex:1">Aplicar</button>
+          <button class="btn red" onclick="sendOff()">Off</button>
+        </div>
+        <div class="colors" id="presetColors"></div>
+      </div>
+
+      <!-- Patrones -->
+      <div class="section">
+        <div class="section-title">Patrones</div>
+        <button class="pattern-btn" onclick="sendWave('left-right')">
+          <span class="icon">🌊</span> Ola →
+        </button>
+        <button class="pattern-btn" onclick="sendWave('right-left')">
+          <span class="icon">🌊</span> Ola ←
+        </button>
+        <button class="pattern-btn" onclick="sendRainbow()">
+          <span class="icon">🌈</span> Arcoíris por zona
+        </button>
+        <button class="pattern-btn" onclick="sendFlagMexico()">
+          <span class="icon">🇲🇽</span> Bandera México
+        </button>
+        <button class="pattern-btn" onclick="sendFire()">
+          <span class="icon">🔥</span> Fuego aleatorio
+        </button>
+        <button class="pattern-btn" onclick="sendCountdown()">
+          <span class="icon">⏱️</span> Cuenta regresiva
+        </button>
+      </div>
+
+      <!-- Evento -->
+      <div class="section">
+        <div class="section-title">Evento</div>
+        <div class="event-row">
+          <input type="text" class="input" id="eventIdInput" value="demo">
+          <button class="btn blue" onclick="connectOps()">Conectar</button>
+        </div>
+        <div style="font-size:0.65rem;color:#333;margin-top:4px;">
+          QR: <span id="qrUrl" style="color:#58a6ff">---</span>
+        </div>
+      </div>
+
+      <!-- Log -->
+      <div class="section">
+        <div class="section-title">Log</div>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const ZONES = [
+      { id: 'NO', x: 10, y: 10 },
+      { id: 'N',  x: 40, y: 5 },
+      { id: 'NE', x: 70, y: 10 },
+      { id: 'O',  x: 3,  y: 40 },
+      { id: 'E',  x: 85, y: 40 },
+      { id: 'SO', x: 10, y: 75 },
+      { id: 'S',  x: 40, y: 82 },
+      { id: 'SE', x: 70, y: 75 },
+    ];
+
+    const PRESETS = [
+      '#FFFFFF', '#007AFF', '#5856D6', '#AF52DE',
+      '#FF2D55', '#FF3B30', '#FF9500', '#FFCC00',
+      '#34C759', '#30D158', '#00C7BE', '#5AC8FA',
+    ];
+
+    let socket;
+    let eventId = 'demo';
+    let connectedZones = {};
+
+    function init() {
+      buildPresets();
+      buildPreview();
+      connectOps();
+    }
+
+    function buildPresets() {
+      const c = document.getElementById('presetColors');
+      PRESETS.forEach(color => {
+        const el = document.createElement('div');
+        el.className = 'color-swatch';
+        el.style.background = color;
+        el.onclick = () => {
+          document.getElementById('colorPicker').value = color;
+          document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+          el.classList.add('active');
+          sendColorDirect(color);
+        };
+        c.appendChild(el);
+      });
+    }
+
+    function buildPreview() {
+      const preview = document.getElementById('stadiumPreview');
+      ZONES.forEach(z => {
+        const el = document.createElement('div');
+        el.className = 'zone-preview';
+        el.id = `prev-${z.id}`;
+        el.style.left = `${z.x}%`;
+        el.style.top = `${z.y}%`;
+        el.textContent = z.id;
+        el.onclick = () => {
+          const color = document.getElementById('colorPicker').value;
+          sendToZone(z.id, color);
+          setZoneActive(z.id, color);
+        };
+        preview.appendChild(el);
+      });
+    }
+
+    function setZoneActive(zoneId, color) {
+      const el = document.getElementById(`prev-${zoneId}`);
+      if (el) {
+        el.classList.add('active');
+        el.style.background = color;
+        el.style.borderColor = color;
+      }
+    }
+
+    function clearAllZones() {
+      document.querySelectorAll('.zone-preview').forEach(el => {
+        el.classList.remove('active', 'connected');
+        el.style.background = '';
+        el.style.borderColor = '';
+      });
+    }
+
+    // ===== Socket =====
+    function connectOps() {
+      eventId = document.getElementById('eventIdInput').value || 'demo';
+      document.getElementById('currentEvent').textContent = eventId;
+      document.getElementById('qrUrl').textContent = `${location.origin}/?event=${eventId}`;
+
+      if (socket) socket.disconnect();
+      socket = io();
+
+      socket.on('connect', () => {
+        socket.emit('join_ops', { eventId });
+        addLog('🟢 Conectado');
+      });
+
+      socket.on('ops_ready', (data) => {
+        document.getElementById('count').textContent = data.participantCount;
+        updateConnectedZones(data.clients);
+      });
+
+      socket.on('participant_update', (data) => {
+        document.getElementById('count').textContent = data.count;
+        updateConnectedZones(data.clients);
+      });
+
+      socket.on('pattern_sent', (data) => addLog(`→ ${data.name || data.action}`));
+    }
+
+    function updateConnectedZones(clients) {
+      connectedZones = {};
+      (clients || []).forEach(c => {
+        if (c.zone) {
+          connectedZones[c.zone] = (connectedZones[c.zone] || 0) + 1;
+        }
+      });
+
+      ZONES.forEach(z => {
+        const el = document.getElementById(`prev-${z.id}`);
+        if (el) {
+          const count = connectedZones[z.id] || 0;
+          if (count > 0) {
+            el.classList.add('connected');
+            el.title = `${z.id}: ${count} personas`;
+          } else {
+            el.classList.remove('connected');
+          }
+        }
+      });
+    }
+
+    // ===== Commands =====
+    function emit(action, data = {}) {
+      socket.emit('trigger_pattern', { eventId, pattern: { action, ...data } });
+    }
+
+    function sendColor() {
+      sendColorDirect(document.getElementById('colorPicker').value);
+    }
+    function sendColorDirect(color) {
+      emit('color', { color, name: `Color ${color}` });
+      ZONES.forEach(z => setZoneActive(z.id, color));
+      addLog(`💡 ${color}`);
+    }
+
+    function sendOff() {
+      emit('off', { name: 'Off' });
+      clearAllZones();
+      addLog('⏻ Off');
+    }
+
+    function sendStrobe() {
+      const color = document.getElementById('colorPicker').value;
+      emit('strobe', { interval: 150, duration: 3000, color, name: 'Strobe' });
+      let on = false;
+      const iv = setInterval(() => {
+        on = !on;
+        on ? ZONES.forEach(z => setZoneActive(z.id, color)) : clearAllZones();
+      }, 150);
+      setTimeout(() => { clearInterval(iv); clearAllZones(); }, 3000);
+      addLog('⚡ Strobe 3s');
+    }
+
+    function sendPulse() {
+      const color = document.getElementById('colorPicker').value;
+      emit('pulse', { color, count: 5, name: 'Pulse' });
+      addLog('❤️ Pulse');
+    }
+
+    function sendWave(dir) {
+      const color = document.getElementById('colorPicker').value;
+      emit('wave', { direction: dir, speed: 200, color, name: `Ola ${dir}` });
+      // Preview animation
+      const order = dir === 'left-right'
+        ? ['NO','N','NE','E','SE','S','SO','O']
+        : ['O','SO','S','SE','E','NE','N','NO'];
+      order.forEach((z, i) => {
+        setTimeout(() => {
+          clearAllZones();
+          setZoneActive(z, color);
+        }, i * 200);
+      });
+      setTimeout(clearAllZones, order.length * 200 + 600);
+      addLog(`🌊 Ola ${dir}`);
+    }
+
+    function sendRainbow() {
+      emit('rainbow', { duration: 5000, name: 'Arcoíris' });
+      const hues = { N: 0, NE: 45, E: 90, SE: 135, S: 180, SO: 225, O: 270, NO: 315 };
+      ZONES.forEach(z => setZoneActive(z.id, `hsl(${hues[z.id]},100%,50%)`));
+      setTimeout(clearAllZones, 5000);
+      addLog('🌈 Arcoíris');
+    }
+
+    function sendFlagMexico() {
+      emit('sequence', {
+        frames: [
+          { zone: 'NO', color: '#006847' }, { zone: 'O', color: '#006847' }, { zone: 'SO', color: '#006847' },
+          { zone: 'N', color: '#FFFFFF' }, { zone: 'S', color: '#FFFFFF' },
+          { zone: 'NE', color: '#CE1126' }, { zone: 'E', color: '#CE1126' }, { zone: 'SE', color: '#CE1126' },
+        ],
+        intervalMs: 1,
+        name: 'Bandera MX'
+      });
+      setZoneActive('NO', '#006847'); setZoneActive('O', '#006847'); setZoneActive('SO', '#006847');
+      setZoneActive('N', '#FFFFFF'); setZoneActive('S', '#FFFFFF');
+      setZoneActive('NE', '#CE1126'); setZoneActive('E', '#CE1126'); setZoneActive('SE', '#CE1126');
+      addLog('🇲🇽 Bandera MX');
+    }
+
+    function sendFire() {
+      const colors = ['#FF0000','#FF3300','#FF6600','#FF9900','#FFCC00','#FFFF00'];
+      const frames = [];
+      for (let i = 0; i < 10; i++) {
+        ZONES.forEach(z => {
+          frames.push({ zone: z.id, color: colors[Math.floor(Math.random() * colors.length)] });
+        });
+      }
+      emit('sequence', { frames, intervalMs: 200, name: 'Fuego' });
+      addLog('🔥 Fuego');
+    }
+
+    function sendCountdown() {
+      const colors = ['#FF0000','#FF3B30','#FF9500','#FFCC00','#34C759'];
+      const frames = [];
+      for (let i = 4; i >= 0; i--) {
+        frames.push({ all: colors[i] });
+        frames.push({ all: '#000000' });
+      }
+      frames.push({ all: '#FFFFFF' });
+      emit('sequence', { frames, intervalMs: 800, name: 'Countdown' });
+      addLog('⏱️ Countdown');
+    }
+
+    function sendToZone(zoneId, color) {
+      socket.emit('set_zone_color', { eventId, zone: zoneId, color });
+    }
+
+    // ===== Log =====
+    function addLog(msg) {
+      const log = document.getElementById('log');
+      const time = new Date().toLocaleTimeString();
+      log.innerHTML += `<div class="entry"><span class="time">${time}</span> ${msg}</div>`;
+      log.scrollTop = log.scrollHeight;
+    }
+
+    init();
+  </script>
+</body>
+</html>

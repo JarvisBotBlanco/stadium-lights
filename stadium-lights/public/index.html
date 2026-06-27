@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#000000">
+  <link rel="manifest" href="/manifest.json">
+  <title>🏟️ Light Show</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #000;
+      color: white;
+      height: 100dvh;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* ===== Step 1: Bienvenida ===== */
+    .screen { display: none; height: 100dvh; flex-direction: column; }
+    .screen.active { display: flex; }
+
+    #welcomeScreen {
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 30px;
+      background: radial-gradient(ellipse at center, #111 0%, #000 100%);
+    }
+    #welcomeScreen .logo {
+      font-size: 4rem;
+      margin-bottom: 16px;
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    #welcomeScreen h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #007AFF, #AF52DE);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    #welcomeScreen p {
+      color: #666;
+      font-size: 0.95rem;
+      margin-bottom: 40px;
+      max-width: 280px;
+    }
+    .btn-primary {
+      padding: 16px 48px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      background: linear-gradient(135deg, #007AFF, #5856D6);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow: 0 4px 20px rgba(0,122,255,0.3);
+    }
+    .btn-primary:active { transform: scale(0.95); opacity: 0.9; }
+    .btn-secondary {
+      padding: 12px 32px;
+      font-size: 0.9rem;
+      background: rgba(255,255,255,0.08);
+      color: #888;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      cursor: pointer;
+      margin-top: 12px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ===== Step 2: Selector de zona ===== */
+    #zoneScreen {
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: #000;
+    }
+    #zoneScreen h2 {
+      font-size: 1.3rem;
+      margin-bottom: 6px;
+    }
+    #zoneScreen .subtitle {
+      color: #555;
+      font-size: 0.8rem;
+      margin-bottom: 24px;
+    }
+    .stadium-map {
+      position: relative;
+      width: 100%;
+      max-width: 340px;
+      aspect-ratio: 1.4;
+      margin-bottom: 20px;
+    }
+    .stadium-bg {
+      position: absolute;
+      inset: 0;
+      border-radius: 50% / 40%;
+      border: 2px solid #1a1a2e;
+      background: #0a0a15;
+    }
+    .stadium-field {
+      position: absolute;
+      top: 25%; left: 20%; right: 20%; bottom: 25%;
+      border-radius: 8px;
+      border: 1px solid #1a3a1a;
+      background: #0a1a0a;
+    }
+    .zone-ring {
+      position: absolute;
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+    }
+    .zone-ring.top { top: 8%; left: 15%; right: 15%; }
+    .zone-ring.bottom { bottom: 8%; left: 15%; right: 15%; }
+    .zone-ring.left { left: 5%; top: 25%; bottom: 25%; flex-direction: column; }
+    .zone-ring.right { right: 5%; top: 25%; bottom: 25%; flex-direction: column; }
+
+    .zone-btn {
+      flex: 1;
+      min-height: 36px;
+      border-radius: 8px;
+      background: #1a1a2e;
+      border: 1.5px solid #2a2a4a;
+      color: #666;
+      font-size: 0.65rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .zone-btn:active { transform: scale(0.9); }
+    .zone-btn.selected {
+      background: #007AFF;
+      border-color: #007AFF;
+      color: white;
+      box-shadow: 0 0 16px rgba(0,122,255,0.4);
+    }
+    .zone-btn.has-people {
+      border-color: #3a3a5a;
+      background: #1a1a3a;
+    }
+    .zone-btn .count {
+      display: block;
+      font-size: 0.5rem;
+      color: #444;
+      margin-top: 2px;
+    }
+
+    /* ===== Step 3: Esperando ===== */
+    #waitingScreen {
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 30px;
+      background: #000;
+    }
+    .waiting-ring {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 3px solid #1a1a2e;
+      border-top-color: #007AFF;
+      animation: spin 1.5s linear infinite;
+      margin-bottom: 24px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .zone-badge {
+      background: rgba(0,122,255,0.15);
+      border: 1px solid rgba(0,122,255,0.3);
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      color: #007AFF;
+      margin-bottom: 16px;
+    }
+    .participant-count {
+      color: #444;
+      font-size: 0.8rem;
+    }
+
+    /* ===== Show screen (fullscreen color) ===== */
+    #showScreen {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      display: none;
+      transition: background-color 0.05s;
+    }
+
+    /* ===== Hidden UI (shown only before show) ===== */
+    .pre-show-ui { transition: opacity 0.3s; }
+    .pre-show-ui.hidden { opacity: 0; pointer-events: none; }
+  </style>
+</head>
+<body>
+
+  <!-- Step 1: Bienvenida -->
+  <div id="welcomeScreen" class="screen active">
+    <div class="logo">🏟️</div>
+    <h1>Light Show</h1>
+    <p>Tu celular será parte de un espectáculo de luces sincronizado</p>
+    <button class="btn-primary" onclick="goToZone()">Participar</button>
+  </div>
+
+  <!-- Step 2: Selector de zona -->
+  <div id="zoneScreen" class="screen">
+    <h2>¿Dónde estás?</h2>
+    <div class="subtitle">Toca tu zona en el mapa</div>
+    <div class="stadium-map" id="stadiumMap">
+      <div class="stadium-bg"></div>
+      <div class="stadium-field"></div>
+      <!-- Zonas se generan dinámicamente -->
+    </div>
+    <button class="btn-primary" onclick="autoJoin()" style="font-size:0.9rem;padding:12px 32px;">
+      Asignar automáticamente
+    </button>
+    <button class="btn-secondary" onclick="goBack()">← Volver</button>
+  </div>
+
+  <!-- Step 3: Esperando -->
+  <div id="waitingScreen" class="screen pre-show-ui">
+    <div class="waiting-ring"></div>
+    <div class="zone-badge" id="zoneBadge">---</div>
+    <div class="participant-count" id="participantCount">0 participantes</div>
+  </div>
+
+  <!-- Show overlay -->
+  <div id="showScreen"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const eventId = params.get('event') || 'demo';
+
+    // Zonas del estadio (configurable)
+    const ZONES = [
+      { id: 'N', label: 'Norte', ring: 'top', emoji: '⬆️' },
+      { id: 'NE', label: 'N-Este', ring: 'top', emoji: '↗️' },
+      { id: 'E', label: 'Este', ring: 'right', emoji: '➡️' },
+      { id: 'SE', label: 'S-Este', ring: 'right', emoji: '↘️' },
+      { id: 'S', label: 'Sur', ring: 'bottom', emoji: '⬇️' },
+      { id: 'SO', label: 'S-Oeste', ring: 'bottom', emoji: '↙️' },
+      { id: 'O', label: 'Oeste', ring: 'left', emoji: '⬅️' },
+      { id: 'NO', label: 'N-Oeste', ring: 'left', emoji: '↖️' },
+    ];
+
+    let socket;
+    let myZone = null;
+    let clockOffset = 0;
+    let isShowing = false;
+
+    // ===== Init =====
+    function init() {
+      buildZones();
+      connectSocket();
+    }
+
+    // ===== Navigation =====
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    function goToZone() { showScreen('zoneScreen'); }
+    function goBack() { showScreen('welcomeScreen'); }
+
+    // ===== Build zones =====
+    function buildZones() {
+      const map = document.getElementById('stadiumMap');
+      const rings = { top: [], bottom: [], left: [], right: [] };
+
+      ZONES.forEach(z => rings[z.ring].push(z));
+
+      Object.entries(rings).forEach(([ringName, zones]) => {
+        const ringEl = document.createElement('div');
+        ringEl.className = `zone-ring ${ringName}`;
+
+        zones.forEach(z => {
+          const btn = document.createElement('button');
+          btn.className = 'zone-btn';
+          btn.id = `zone-${z.id}`;
+          btn.innerHTML = `${z.emoji}<br>${z.label}`;
+          btn.onclick = () => selectZone(z.id, btn);
+          ringEl.appendChild(btn);
+        });
+
+        map.appendChild(ringEl);
+      });
+    }
+
+    // ===== Select zone =====
+    function selectZone(zoneId, btn) {
+      document.querySelectorAll('.zone-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      myZone = zoneId;
+
+      // Unirse después de un breve delay visual
+      setTimeout(() => joinEvent(zoneId), 400);
+    }
+
+    function autoJoin() {
+      joinEvent(null, true);
+    }
+
+    // ===== Socket =====
+    function connectSocket() {
+      socket = io({ reconnection: true });
+
+      socket.on('connect', () => {
+        if (myZone) joinEvent(myZone);
+      });
+
+      socket.on('joined', (data) => {
+        myZone = data.zone;
+        document.getElementById('zoneBadge').textContent = `Zona ${myZone}`;
+        document.getElementById('participantCount').textContent =
+          `${data.participantCount} participante${data.participantCount !== 1 ? 's' : ''}`;
+        showScreen('waitingScreen');
+        requestWakeLock();
+      });
+
+      socket.on('participant_update', (data) => {
+        document.getElementById('participantCount').textContent =
+          `${data.count} participante${data.count !== 1 ? 's' : ''}`;
+      });
+
+      socket.on('pattern', executePattern);
+      socket.on('pixel', data => showColor(data.color));
+    }
+
+    function joinEvent(zone, auto = false) {
+      socket.emit('join_event', { eventId, zone, autoAssign: auto });
+    }
+
+    // ===== Wake Lock =====
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) await navigator.wakeLock.request('screen');
+      } catch(e) {}
+    }
+
+    // ===== NTP sync =====
+    async function syncClock() {
+      const offsets = [];
+      for (let i = 0; i < 8; i++) {
+        const t1 = performance.now();
+        const r = await new Promise(resolve => socket.emit('time_ping', {}, resolve));
+        const rtt = performance.now() - t1;
+        offsets.push({ offset: r.serverTime - Date.now() - rtt/2, rtt });
+        await new Promise(r => setTimeout(r, 100));
+      }
+      offsets.sort((a,b) => a.rtt - b.rtt);
+      clockOffset = offsets.slice(0,4).reduce((s,o) => s + o.offset, 0) / 4;
+    }
+
+    // ===== Show/hide =====
+    function showColor(color) {
+      const show = document.getElementById('showScreen');
+      const waiting = document.getElementById('waitingScreen');
+
+      show.style.display = 'block';
+      show.style.backgroundColor = color;
+
+      // Ocultar TODA la UI durante el show
+      if (!isShowing) {
+        isShowing = true;
+        waiting.classList.add('hidden');
+        // Forzar status bar del navegador a ocultar
+        document.querySelector('meta[name="theme-color"]').content = color;
+      }
+    }
+
+    function hideColor() {
+      const show = document.getElementById('showScreen');
+      const waiting = document.getElementById('waitingScreen');
+
+      show.style.display = 'none';
+
+      if (isShowing) {
+        isShowing = false;
+        waiting.classList.remove('hidden');
+        document.querySelector('meta[name="theme-color"]').content = '#000000';
+      }
+    }
+
+    // ===== Execute patterns =====
+    async function executePattern(pattern) {
+      const delay = (pattern.executeAt + clockOffset) - Date.now();
+      if (delay > 0) await new Promise(r => setTimeout(r, delay));
+
+      switch (pattern.action) {
+        case 'color': showColor(pattern.color || '#FFF'); break;
+        case 'off': hideColor(); break;
+        case 'strobe': doStrobe(pattern); break;
+        case 'flash': showColor(pattern.color || '#FFF'); setTimeout(hideColor, pattern.duration || 500); break;
+        case 'wave': doWave(pattern); break;
+        case 'rainbow': doRainbow(pattern); break;
+        case 'sequence': doSequence(pattern); break;
+        case 'pulse': doPulse(pattern); break;
+      }
+    }
+
+    async function doStrobe(p) {
+      const start = Date.now();
+      let on = false;
+      while (Date.now() - start < (p.duration || 3000)) {
+        on = !on;
+        on ? showColor(p.color || '#FFF') : hideColor();
+        await new Promise(r => setTimeout(r, p.interval || 150));
+      }
+      hideColor();
+    }
+
+    async function doWave(p) {
+      const delay = p.speed || 200;
+      const zoneOrder = ['NO','N','NE','E','SE','S','SO','O'];
+      const idx = zoneOrder.indexOf(myZone);
+      const step = p.direction === 'right-left' ? (7 - idx) : idx;
+      await new Promise(r => setTimeout(r, step * delay));
+      showColor(p.color || '#007AFF');
+      await new Promise(r => setTimeout(r, delay * 4));
+      hideColor();
+    }
+
+    async function doRainbow(p) {
+      const zoneHues = { N: 0, NE: 45, E: 90, SE: 135, S: 180, SO: 225, O: 270, NO: 315 };
+      const hue = zoneHues[myZone] || 0;
+      showColor(`hsl(${hue}, 100%, 50%)`);
+      await new Promise(r => setTimeout(r, p.duration || 5000));
+      hideColor();
+    }
+
+    async function doPulse(p) {
+      const color = p.color || '#FFF';
+      for (let i = 0; i < (p.count || 3); i++) {
+        showColor(color);
+        await new Promise(r => setTimeout(r, 200));
+        hideColor();
+        await new Promise(r => setTimeout(r, 200));
+      }
+    }
+
+    async function doSequence(p) {
+      for (const frame of p.frames) {
+        if (frame.zone && frame.zone === myZone) {
+          showColor(frame.color);
+        } else if (frame.all) {
+          showColor(frame.all);
+        } else if (!frame.zone && !frame.all) {
+          hideColor();
+        }
+        await new Promise(r => setTimeout(r, p.intervalMs || 500));
+      }
+      hideColor();
+    }
+
+    init();
+  </script>
+</body>
+</html>
