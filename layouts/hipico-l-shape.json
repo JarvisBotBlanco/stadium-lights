@@ -1,0 +1,39 @@
+{
+  "eventId": "hipico-l-shape",
+  "name": "Concurso HIPICO — Grada en L",
+  "branding": {
+    "primaryColor": "#2c5282"
+  },
+  "sections": [
+    {
+      "id": "grada-largo",
+      "label": "Grada Lateral",
+      "tables": [
+        { "id": "M1", "label": "Mesa 1", "row": 0, "col": 0, "seats": 8 },
+        { "id": "M2", "label": "Mesa 2", "row": 0, "col": 1, "seats": 8 },
+        { "id": "M3", "label": "Mesa 3", "row": 0, "col": 2, "seats": 8 },
+        { "id": "M4", "label": "Mesa 4", "row": 0, "col": 3, "seats": 8 },
+        { "id": "M5", "label": "Mesa 5", "row": 0, "col": 4, "seats": 8 },
+        { "id": "M6", "label": "Mesa 6", "row": 0, "col": 5, "seats": 8 }
+      ]
+    },
+    {
+      "id": "grada-fondo",
+      "label": "Grada Fondo",
+      "tables": [
+        { "id": "M1", "label": "Mesa 1", "row": 1, "col": 0, "seats": 8 },
+        { "id": "M2", "label": "Mesa 2", "row": 2, "col": 0, "seats": 8 },
+        { "id": "M3", "label": "Mesa 3", "row": 3, "col": 0, "seats": 8 },
+        { "id": "M4", "label": "Mesa 4", "row": 4, "col": 0, "seats": 8 }
+      ]
+    },
+    {
+      "id": "vip",
+      "label": "Palco VIP",
+      "tables": [
+        { "id": "V1", "label": "VIP 1", "row": 0, "col": 6, "seats": 4 },
+        { "id": "V2", "label": "VIP 2", "row": 1, "col": 6, "seats": 4 }
+      ]
+    }
+  ]
+}

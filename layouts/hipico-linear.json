@@ -1,0 +1,37 @@
+{
+  "eventId": "hipico-demo",
+  "name": "Concurso HIPICO — Grada Lineal",
+  "branding": {
+    "primaryColor": "#1a472a"
+  },
+  "sections": [
+    {
+      "id": "grada-norte",
+      "label": "Grada Norte",
+      "tables": [
+        { "id": "M1", "label": "Mesa 1", "row": 0, "col": 0, "seats": 6 },
+        { "id": "M2", "label": "Mesa 2", "row": 0, "col": 1, "seats": 6 },
+        { "id": "M3", "label": "Mesa 3", "row": 0, "col": 2, "seats": 6 },
+        { "id": "M4", "label": "Mesa 4", "row": 0, "col": 3, "seats": 6 },
+        { "id": "M5", "label": "Mesa 5", "row": 0, "col": 4, "seats": 6 },
+        { "id": "M6", "label": "Mesa 6", "row": 0, "col": 5, "seats": 6 },
+        { "id": "M7", "label": "Mesa 7", "row": 0, "col": 6, "seats": 6 },
+        { "id": "M8", "label": "Mesa 8", "row": 0, "col": 7, "seats": 6 }
+      ]
+    },
+    {
+      "id": "grada-sur",
+      "label": "Grada Sur",
+      "tables": [
+        { "id": "M1", "label": "Mesa 1", "row": 1, "col": 0, "seats": 6 },
+        { "id": "M2", "label": "Mesa 2", "row": 1, "col": 1, "seats": 6 },
+        { "id": "M3", "label": "Mesa 3", "row": 1, "col": 2, "seats": 6 },
+        { "id": "M4", "label": "Mesa 4", "row": 1, "col": 3, "seats": 6 },
+        { "id": "M5", "label": "Mesa 5", "row": 1, "col": 4, "seats": 6 },
+        { "id": "M6", "label": "Mesa 6", "row": 1, "col": 5, "seats": 6 },
+        { "id": "M7", "label": "Mesa 7", "row": 1, "col": 6, "seats": 6 },
+        { "id": "M8", "label": "Mesa 8", "row": 1, "col": 7, "seats": 6 }
+      ]
+    }
+  ]
+}
