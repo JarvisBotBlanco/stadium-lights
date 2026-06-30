@@ -1,7 +1,9 @@
 import QRCode from 'qrcode';
+import { SHOW_SEQUENCES, expandSequence } from '../../shared/show/sequences.js';
 
 let socket;
 let eventId = 'hipico-demo';
+let sequenceTimers = [];
 
 const SCENES = [
   { id: 'color', label: 'Color', scene: { action: 'solid' } },
@@ -19,6 +21,7 @@ const els = {
   eventInput: document.getElementById('eventIdInput'),
   connectBtn: document.getElementById('connectBtn'),
   sceneGrid: document.getElementById('sceneGrid'),
+  sequenceGrid: document.getElementById('sequenceGrid'),
   colorPicker: document.getElementById('colorPicker'),
   dryRun: document.getElementById('dryRunToggle'),
   qrCanvas: document.getElementById('qrCanvas'),
@@ -117,6 +120,29 @@ function sendScene(baseScene) {
   });
 }
 
+function runSequence(sequence) {
+  if (!socket?.connected) {
+    addLog('No conectado');
+    return;
+  }
+
+  cancelSequence();
+  const steps = expandSequence(sequence);
+  addLog(`Secuencia: ${sequence.label}`);
+
+  for (const step of steps) {
+    const timer = setTimeout(() => {
+      sendScene(step.scene);
+    }, step.at);
+    sequenceTimers.push(timer);
+  }
+}
+
+function cancelSequence() {
+  for (const timer of sequenceTimers) clearTimeout(timer);
+  sequenceTimers = [];
+}
+
 function buildSceneButtons() {
   els.sceneGrid.innerHTML = '';
   for (const item of SCENES) {
@@ -124,8 +150,24 @@ function buildSceneButtons() {
     button.className = item.danger ? 'scene-btn danger' : 'scene-btn';
     button.type = 'button';
     button.textContent = item.label;
-    button.onclick = () => sendScene(item.scene);
+    button.onclick = () => {
+      cancelSequence();
+      sendScene(item.scene);
+    };
     els.sceneGrid.appendChild(button);
+  }
+}
+
+function buildSequenceButtons() {
+  els.sequenceGrid.innerHTML = '';
+  for (const sequence of SHOW_SEQUENCES) {
+    const button = document.createElement('button');
+    button.className =
+      sequence.id === 'safe-reset' ? 'sequence-btn danger' : 'sequence-btn';
+    button.type = 'button';
+    button.textContent = sequence.label;
+    button.onclick = () => runSequence(sequence);
+    els.sequenceGrid.appendChild(button);
   }
 }
 
@@ -144,4 +186,5 @@ function escapeHtml(value) {
 
 els.connectBtn.onclick = connectOps;
 buildSceneButtons();
+buildSequenceButtons();
 connectOps();

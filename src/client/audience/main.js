@@ -2,6 +2,7 @@ import { syncClockWithSocket } from '../../shared/sync/clock.js';
 import { ScreenLight } from './lights/ScreenLight.js';
 import { TorchLight } from './lights/TorchLight.js';
 import { HapticsFeedback } from './lights/HapticsFeedback.js';
+import { WakeLockManager } from './lights/WakeLockManager.js';
 import { SceneRunner } from './show/SceneRunner.js';
 
 const params = new URLSearchParams(window.location.search);
@@ -12,7 +13,7 @@ let socket;
 let runner;
 let torch;
 let haptics;
-let wakeLock = null;
+let wakeLockManager;
 let sessionToken = localStorage.getItem(tokenKey);
 let clockOffset = 0;
 
@@ -39,9 +40,10 @@ async function prepareDevice() {
   await haptics.trigger(35, { intensity: 0.5 });
 
   torch = new TorchLight();
+  wakeLockManager = new WakeLockManager();
 
   await requestFullscreen();
-  await requestWakeLock();
+  const wakeLockState = await wakeLockManager.enable();
   const torchReady = await torch.prepare();
 
   await haptics.trigger(torchReady ? 'success' : 60);
@@ -50,7 +52,7 @@ async function prepareDevice() {
     screen: true,
     torch: torchReady,
     haptics: haptics.available,
-    wakeLock: Boolean(wakeLock),
+    wakeLock: wakeLockState.available,
     fullscreen: Boolean(document.fullscreenElement)
   };
 }
@@ -111,16 +113,6 @@ async function requestFullscreen() {
   }
 }
 
-async function requestWakeLock() {
-  try {
-    if ('wakeLock' in navigator) {
-      wakeLock = await navigator.wakeLock.request('screen');
-    }
-  } catch {
-    wakeLock = null;
-  }
-}
-
 els.start.onclick = async () => {
   els.start.disabled = true;
   setStatus('Preparando...');
@@ -131,5 +123,6 @@ els.start.onclick = async () => {
 window.addEventListener('beforeunload', () => {
   runner?.cancel();
   torch?.stop();
+  wakeLockManager?.disable();
   haptics?.destroy();
 });

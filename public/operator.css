@@ -75,7 +75,7 @@ h2 {
 
 .controls-panel {
   grid-column: 2;
-  grid-row: 1 / span 3;
+  grid-row: 1 / span 4;
 }
 
 .event-row {
@@ -165,6 +165,17 @@ input[type="text"] {
   margin-bottom: 16px;
 }
 
+.sequence-block {
+  margin-bottom: 18px;
+}
+
+.sequence-block h3 {
+  margin: 0 0 10px;
+  color: #8dca92;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+}
+
 .controls-head h2 {
   margin-bottom: 0;
 }
@@ -199,10 +210,40 @@ input[type="text"] {
   gap: 10px;
 }
 
+.sequence-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
 .scene-btn {
   min-height: 82px;
   padding: 14px;
   font-size: 1rem;
+}
+
+.sequence-btn {
+  min-height: 52px;
+  border: 1px solid #353127;
+  border-radius: 8px;
+  background: #171b14;
+  color: #f8f2df;
+  cursor: pointer;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.sequence-btn:hover {
+  background: #202719;
+}
+
+.sequence-btn:active {
+  transform: scale(0.98);
+}
+
+.sequence-btn.danger {
+  background: #541d19;
+  border-color: #7c2b24;
 }
 
 .scene-btn:hover {
