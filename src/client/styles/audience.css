@@ -94,47 +94,15 @@ h1 {
   animation: readyPulse 1.8s ease-in-out infinite;
 }
 
-.counter {
-  display: inline-grid;
-  gap: 4px;
-  min-width: 142px;
-  padding: 12px 18px;
-  border: 1px solid #27231d;
-  border-radius: 8px;
-  background: #11100e;
-}
-
-.counter span {
-  font-size: 1.8rem;
-  font-weight: 800;
-}
-
-.counter small {
-  color: #9b958b;
-}
-
 #showScreen {
   position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: 100;
   background: #000;
 }
 
 #showScreen[hidden] {
   display: none;
-}
-
-#infoOverlay {
-  position: fixed;
-  top: max(12px, env(safe-area-inset-top));
-  right: 12px;
-  z-index: 30;
-  padding: 7px 10px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.5);
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 0.75rem;
-  pointer-events: none;
 }
 
 @keyframes readyPulse {

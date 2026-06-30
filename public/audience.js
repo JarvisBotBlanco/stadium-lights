@@ -451,24 +451,22 @@
     readyDetail: document.getElementById("readyDetail"),
     joinPanel: document.getElementById("joinPanel"),
     readyPanel: document.getElementById("readyPanel"),
-    showScreen: document.getElementById("showScreen"),
-    info: document.getElementById("infoOverlay"),
-    count: document.getElementById("readyCount")
+    showScreen: document.getElementById("showScreen")
   };
   var screen = new ScreenLight(els.showScreen, {
     themeMeta: document.querySelector('meta[name="theme-color"]')
   });
   function setStatus(text) {
     els.status.textContent = text;
-    els.info.textContent = text;
   }
   async function prepareDevice() {
     haptics = new HapticsFeedback();
+    await haptics.trigger(35, { intensity: 0.5 });
     torch = new TorchLight();
     await requestFullscreen();
     await requestWakeLock();
     const torchReady = await torch.prepare();
-    await haptics.trigger(torchReady ? "success" : "nudge");
+    await haptics.trigger(torchReady ? "success" : 60);
     return {
       screen: true,
       torch: torchReady,
@@ -504,18 +502,15 @@
       });
       els.joinPanel.hidden = true;
       els.readyPanel.hidden = false;
-      els.readyTitle.textContent = data.capabilities.torch ? "Listo con pantalla + flash" : "Listo con pantalla";
-      els.readyDetail.textContent = "Levanta tu telefono cuando empiece el show.";
-      updateStats(data.stats);
+      els.readyTitle.textContent = "Listo";
+      els.readyDetail.textContent = data.capabilities.torch ? "Pantalla y flash preparados." : "Pantalla preparada sin flash.";
       setStatus("Listo");
     });
-    socket.on("show_stats", (data) => updateStats(data.stats));
+    socket.on("show_stats", () => {
+    });
     socket.on("scene", (scene) => {
       runner?.run(scene);
     });
-  }
-  function updateStats(stats = {}) {
-    els.count.textContent = String(stats.readyCount ?? 0);
   }
   async function requestFullscreen() {
     try {
