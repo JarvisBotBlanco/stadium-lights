@@ -1,9 +1,15 @@
 import QRCode from 'qrcode';
-import { SHOW_SEQUENCES, expandSequence } from '../../shared/show/sequences.js';
+import {
+  BUILT_IN_SHOWS,
+  expandShow,
+  formatDuration,
+  getShowDuration,
+  parseCustomShow
+} from '../../shared/show/shows.js';
 
 let socket;
 let eventId = 'hipico-demo';
-let sequenceTimers = [];
+let showTimers = [];
 
 const SCENES = [
   { id: 'color', label: 'Color', scene: { action: 'solid' } },
@@ -21,7 +27,9 @@ const els = {
   eventInput: document.getElementById('eventIdInput'),
   connectBtn: document.getElementById('connectBtn'),
   sceneGrid: document.getElementById('sceneGrid'),
-  sequenceGrid: document.getElementById('sequenceGrid'),
+  showGrid: document.getElementById('showGrid'),
+  customShowInput: document.getElementById('customShowInput'),
+  runCustomShowBtn: document.getElementById('runCustomShowBtn'),
   colorPicker: document.getElementById('colorPicker'),
   dryRun: document.getElementById('dryRunToggle'),
   qrCanvas: document.getElementById('qrCanvas'),
@@ -120,27 +128,27 @@ function sendScene(baseScene) {
   });
 }
 
-function runSequence(sequence) {
+function runShow(show) {
   if (!socket?.connected) {
     addLog('No conectado');
     return;
   }
 
-  cancelSequence();
-  const steps = expandSequence(sequence);
-  addLog(`Secuencia: ${sequence.label}`);
+  cancelShow();
+  const cues = expandShow(show);
+  addLog(`Show: ${show.label} (${formatDuration(getShowDuration(show))})`);
 
-  for (const step of steps) {
+  for (const cue of cues) {
     const timer = setTimeout(() => {
-      sendScene(step.scene);
-    }, step.at);
-    sequenceTimers.push(timer);
+      sendScene(cue.scene);
+    }, cue.at);
+    showTimers.push(timer);
   }
 }
 
-function cancelSequence() {
-  for (const timer of sequenceTimers) clearTimeout(timer);
-  sequenceTimers = [];
+function cancelShow() {
+  for (const timer of showTimers) clearTimeout(timer);
+  showTimers = [];
 }
 
 function buildSceneButtons() {
@@ -151,23 +159,35 @@ function buildSceneButtons() {
     button.type = 'button';
     button.textContent = item.label;
     button.onclick = () => {
-      cancelSequence();
+      cancelShow();
       sendScene(item.scene);
     };
     els.sceneGrid.appendChild(button);
   }
 }
 
-function buildSequenceButtons() {
-  els.sequenceGrid.innerHTML = '';
-  for (const sequence of SHOW_SEQUENCES) {
+function buildShowButtons() {
+  els.showGrid.innerHTML = '';
+  for (const show of BUILT_IN_SHOWS) {
     const button = document.createElement('button');
-    button.className =
-      sequence.id === 'safe-reset' ? 'sequence-btn danger' : 'sequence-btn';
+    button.className = show.id === 'safe-reset' ? 'show-btn danger' : 'show-btn';
     button.type = 'button';
-    button.textContent = sequence.label;
-    button.onclick = () => runSequence(sequence);
-    els.sequenceGrid.appendChild(button);
+    button.innerHTML = `
+      <strong>${escapeHtml(show.label)}</strong>
+      <span>${formatDuration(getShowDuration(show))}</span>
+      <small>${escapeHtml(show.summary)}</small>
+    `;
+    button.onclick = () => runShow(show);
+    els.showGrid.appendChild(button);
+  }
+}
+
+function runCustomShow() {
+  try {
+    const show = parseCustomShow(els.customShowInput.value);
+    runShow(show);
+  } catch (err) {
+    addLog(`Show custom invalido: ${err.message}`);
   }
 }
 
@@ -185,6 +205,7 @@ function escapeHtml(value) {
 }
 
 els.connectBtn.onclick = connectOps;
+els.runCustomShowBtn.onclick = runCustomShow;
 buildSceneButtons();
-buildSequenceButtons();
+buildShowButtons();
 connectOps();

@@ -40,21 +40,37 @@
 
     <section class="panel controls-panel">
       <div class="controls-head">
-        <h2>Escenas</h2>
+        <h2>Shows</h2>
         <label class="toggle">
           <input id="dryRunToggle" type="checkbox">
           Dry-run
         </label>
       </div>
-      <div class="sequence-block">
-        <h3>Secuencias</h3>
-        <div id="sequenceGrid" class="sequence-grid"></div>
+      <div class="show-block">
+        <div id="showGrid" class="show-grid"></div>
       </div>
-      <label class="color-field">
-        <span>Color</span>
-        <input type="color" id="colorPicker" value="#1f8f4d">
-      </label>
-      <div id="sceneGrid" class="scene-grid"></div>
+      <details class="custom-show">
+        <summary>Show custom</summary>
+        <textarea id="customShowInput" spellcheck="false">{
+  "label": "Custom 20s",
+  "summary": "Verde, sparkle y cierre blanco",
+  "cues": [
+    { "at": 0, "scene": { "action": "solid", "color": "#1f8f4d" } },
+    { "at": 5000, "scene": { "action": "sparkle", "color": "#ffffff", "duration": 6000, "useTorch": true } },
+    { "at": 12000, "scene": { "action": "solid", "color": "#ffffff" } },
+    { "at": 18000, "scene": { "action": "off" } }
+  ]
+}</textarea>
+        <button id="runCustomShowBtn" class="btn custom-run" type="button">Ejecutar custom</button>
+      </details>
+      <div class="manual-block">
+        <h3>Escenas manuales</h3>
+        <label class="color-field">
+          <span>Color</span>
+          <input type="color" id="colorPicker" value="#1f8f4d">
+        </label>
+        <div id="sceneGrid" class="scene-grid"></div>
+      </div>
     </section>
 
     <section class="panel log-panel">

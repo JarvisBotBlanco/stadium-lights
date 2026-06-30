@@ -20,11 +20,10 @@ let clockOffset = 0;
 const els = {
   start: document.getElementById('startBtn'),
   status: document.getElementById('statusText'),
-  readyTitle: document.getElementById('readyTitle'),
-  readyDetail: document.getElementById('readyDetail'),
   joinPanel: document.getElementById('joinPanel'),
   readyPanel: document.getElementById('readyPanel'),
-  showScreen: document.getElementById('showScreen')
+  showScreen: document.getElementById('showScreen'),
+  idleToast: document.getElementById('idleToast')
 };
 
 const screen = new ScreenLight(els.showScreen, {
@@ -89,10 +88,11 @@ function connect(capabilities) {
 
     els.joinPanel.hidden = true;
     els.readyPanel.hidden = false;
-    els.readyTitle.textContent = 'Listo';
-    els.readyDetail.textContent = data.capabilities.torch
-      ? 'Pantalla y flash preparados.'
-      : 'Pantalla preparada sin flash.';
+    showIdleToast(
+      data.capabilities.torch
+        ? 'Listo: pantalla + flash'
+        : 'Listo: pantalla'
+    );
     setStatus('Listo');
   });
 
@@ -119,6 +119,19 @@ els.start.onclick = async () => {
   const capabilities = await prepareDevice();
   connect(capabilities);
 };
+
+window.addEventListener('pointerdown', () => {
+  if (els.joinPanel.hidden) showIdleToast('Listo para el show');
+});
+
+function showIdleToast(text) {
+  els.idleToast.textContent = text;
+  els.idleToast.hidden = false;
+  clearTimeout(showIdleToast.timer);
+  showIdleToast.timer = setTimeout(() => {
+    els.idleToast.hidden = true;
+  }, 2200);
+}
 
 window.addEventListener('beforeunload', () => {
   runner?.cancel();

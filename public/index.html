@@ -21,14 +21,11 @@
       <p class="status-line" id="statusText">Esperando...</p>
     </section>
 
-    <section id="readyPanel" class="panel ready-panel" hidden>
-      <div class="ready-dot"></div>
-      <h1 id="readyTitle">Listo</h1>
-      <p id="readyDetail" class="copy">Espera la senal del operador.</p>
-    </section>
+    <section id="readyPanel" class="panel ready-panel" hidden></section>
   </main>
 
   <div id="showScreen" hidden></div>
+  <div id="idleToast" class="idle-toast" hidden>Listo para el show</div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="/audience.js"></script>

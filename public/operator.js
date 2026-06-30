@@ -2106,69 +2106,107 @@
   // src/client/operator/main.js
   var import_qrcode = __toESM(require_browser(), 1);
 
-  // src/shared/show/sequences.js
-  var SHOW_SEQUENCES = [
+  // src/shared/show/shows.js
+  var BUILT_IN_SHOWS = [
     {
-      id: "elegant-entry",
-      label: "Entrada elegante",
-      steps: [
-        { delay: 0, scene: { action: "off" } },
-        { delay: 900, scene: { action: "pulse", color: "#ffffff", duration: 2600 } },
-        { delay: 2800, scene: { action: "solid", color: "#1f8f4d" } }
+      id: "opening",
+      label: "Apertura Hipico",
+      summary: "Negro, pulso blanco, verde Hipico, sparkle y blanco.",
+      cues: [
+        { at: 0, scene: { action: "off" } },
+        { at: 800, scene: { action: "pulse", color: "#ffffff", duration: 3e3 } },
+        { at: 3800, scene: { action: "solid", color: "#1f8f4d" } },
+        { at: 6500, scene: { action: "sparkle", color: "#ffffff", duration: 4200, useTorch: true } },
+        { at: 10700, scene: { action: "solid", color: "#ffffff" } },
+        { at: 12800, scene: { action: "solid", color: "#1f8f4d" } }
       ]
     },
     {
-      id: "big-moment",
-      label: "Momento fuerte",
-      steps: [
-        { delay: 0, scene: { action: "flash", color: "#ffffff", duration: 180, useTorch: true } },
-        { delay: 700, scene: { action: "strobe", color: "#ffffff", duration: 2200, tempo: 190, useTorch: true } },
-        { delay: 2600, scene: { action: "sparkle", color: "#ffffff", duration: 3600, useTorch: true } }
-      ]
-    },
-    {
-      id: "celebration",
+      id: "celebration-show",
       label: "Celebracion",
-      steps: [
-        { delay: 0, scene: { action: "solid", color: "#1f8f4d" } },
-        { delay: 1300, scene: { action: "sparkle", color: "#ffffff", duration: 3800, useTorch: true } },
-        { delay: 3800, scene: { action: "burst", color: "#ffffff", duration: 3200, useTorch: true } },
-        { delay: 3200, scene: { action: "solid", color: "#ffffff" } }
+      summary: "Verde sostenido, rafaga por grupos, sparkle y cierre blanco.",
+      cues: [
+        { at: 0, scene: { action: "solid", color: "#1f8f4d" } },
+        { at: 1800, scene: { action: "burst", color: "#ffffff", duration: 3600, useTorch: true } },
+        { at: 5400, scene: { action: "solid", color: "#1f8f4d" } },
+        { at: 6500, scene: { action: "sparkle", color: "#ffffff", duration: 4800, useTorch: true } },
+        { at: 11300, scene: { action: "solid", color: "#ffffff" } },
+        { at: 13500, scene: { action: "solid", color: "#1f8f4d" } }
       ]
     },
     {
-      id: "finale",
-      label: "Final",
-      steps: [
-        { delay: 0, scene: { action: "pulse", color: "#ffffff", duration: 2500 } },
-        { delay: 2400, scene: { action: "strobe", color: "#ffffff", duration: 2600, tempo: 210, useTorch: true } },
-        { delay: 2600, scene: { action: "flash", color: "#ffffff", duration: 220, useTorch: true } },
-        { delay: 900, scene: { action: "off" } }
+      id: "final-hit",
+      label: "Final fuerte",
+      summary: "Pulso, estrobo continuo, flash final y negro limpio.",
+      cues: [
+        { at: 0, scene: { action: "pulse", color: "#ffffff", duration: 2800 } },
+        { at: 2800, scene: { action: "solid", color: "#ffffff" } },
+        { at: 3600, scene: { action: "strobe", color: "#ffffff", duration: 3e3, tempo: 210, useTorch: true } },
+        { at: 6600, scene: { action: "solid", color: "#1f8f4d" } },
+        { at: 8200, scene: { action: "flash", color: "#ffffff", duration: 220, useTorch: true } },
+        { at: 9e3, scene: { action: "off" } }
+      ]
+    },
+    {
+      id: "ambient-loop",
+      label: "Ambiente",
+      summary: "Verde suave, pulsos y sparkle ligero para espera activa.",
+      cues: [
+        { at: 0, scene: { action: "solid", color: "#1f8f4d" } },
+        { at: 6e3, scene: { action: "pulse", color: "#ffffff", duration: 3500 } },
+        { at: 9500, scene: { action: "solid", color: "#1f8f4d" } },
+        { at: 15e3, scene: { action: "sparkle", color: "#ffffff", duration: 5e3, useTorch: false } },
+        { at: 2e4, scene: { action: "solid", color: "#1f8f4d" } },
+        { at: 3e4, scene: { action: "off" } }
       ]
     },
     {
       id: "safe-reset",
       label: "Reset seguro",
-      steps: [
-        { delay: 0, scene: { action: "off" } }
+      summary: "Apaga todas las pantallas y flashes.",
+      cues: [
+        { at: 0, scene: { action: "off" } }
       ]
     }
   ];
-  function expandSequence(sequence) {
-    let at = 0;
-    return (sequence?.steps || []).map((step) => {
-      at += Number(step.delay) || 0;
-      return {
-        at,
-        scene: { ...step.scene }
-      };
-    });
+  function expandShow(show) {
+    return (show?.cues || []).map((cue) => ({
+      at: Math.max(0, Number(cue.at) || 0),
+      scene: { ...cue.scene }
+    })).sort((a, b) => a.at - b.at);
+  }
+  function getShowDuration(show) {
+    return expandShow(show).reduce((max, cue) => {
+      const duration = Number(cue.scene.duration) || 0;
+      return Math.max(max, cue.at + duration);
+    }, 0);
+  }
+  function formatDuration(ms) {
+    return `${Math.ceil(ms / 1e3)}s`;
+  }
+  function parseCustomShow(raw) {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") {
+      throw new Error("Show custom invalido");
+    }
+    if (!Array.isArray(parsed.cues) || parsed.cues.length === 0) {
+      throw new Error("El show necesita cues");
+    }
+    return {
+      id: "custom",
+      label: String(parsed.label || "Show custom").slice(0, 40),
+      summary: String(parsed.summary || "Show custom").slice(0, 120),
+      cues: parsed.cues.map((cue) => ({
+        at: Math.max(0, Number(cue.at) || 0),
+        scene: { ...cue.scene || {} }
+      }))
+    };
   }
 
   // src/client/operator/main.js
   var socket;
   var eventId = "hipico-demo";
-  var sequenceTimers = [];
+  var showTimers = [];
   var SCENES = [
     { id: "color", label: "Color", scene: { action: "solid" } },
     { id: "white", label: "Blanco", scene: { action: "solid", color: "#ffffff" } },
@@ -2184,7 +2222,9 @@
     eventInput: document.getElementById("eventIdInput"),
     connectBtn: document.getElementById("connectBtn"),
     sceneGrid: document.getElementById("sceneGrid"),
-    sequenceGrid: document.getElementById("sequenceGrid"),
+    showGrid: document.getElementById("showGrid"),
+    customShowInput: document.getElementById("customShowInput"),
+    runCustomShowBtn: document.getElementById("runCustomShowBtn"),
     colorPicker: document.getElementById("colorPicker"),
     dryRun: document.getElementById("dryRunToggle"),
     qrCanvas: document.getElementById("qrCanvas"),
@@ -2266,24 +2306,24 @@
       dryRun: els.dryRun.checked
     });
   }
-  function runSequence(sequence) {
+  function runShow(show) {
     if (!socket?.connected) {
       addLog("No conectado");
       return;
     }
-    cancelSequence();
-    const steps = expandSequence(sequence);
-    addLog(`Secuencia: ${sequence.label}`);
-    for (const step of steps) {
+    cancelShow();
+    const cues = expandShow(show);
+    addLog(`Show: ${show.label} (${formatDuration(getShowDuration(show))})`);
+    for (const cue of cues) {
       const timer = setTimeout(() => {
-        sendScene(step.scene);
-      }, step.at);
-      sequenceTimers.push(timer);
+        sendScene(cue.scene);
+      }, cue.at);
+      showTimers.push(timer);
     }
   }
-  function cancelSequence() {
-    for (const timer of sequenceTimers) clearTimeout(timer);
-    sequenceTimers = [];
+  function cancelShow() {
+    for (const timer of showTimers) clearTimeout(timer);
+    showTimers = [];
   }
   function buildSceneButtons() {
     els.sceneGrid.innerHTML = "";
@@ -2293,21 +2333,33 @@
       button.type = "button";
       button.textContent = item.label;
       button.onclick = () => {
-        cancelSequence();
+        cancelShow();
         sendScene(item.scene);
       };
       els.sceneGrid.appendChild(button);
     }
   }
-  function buildSequenceButtons() {
-    els.sequenceGrid.innerHTML = "";
-    for (const sequence of SHOW_SEQUENCES) {
+  function buildShowButtons() {
+    els.showGrid.innerHTML = "";
+    for (const show of BUILT_IN_SHOWS) {
       const button = document.createElement("button");
-      button.className = sequence.id === "safe-reset" ? "sequence-btn danger" : "sequence-btn";
+      button.className = show.id === "safe-reset" ? "show-btn danger" : "show-btn";
       button.type = "button";
-      button.textContent = sequence.label;
-      button.onclick = () => runSequence(sequence);
-      els.sequenceGrid.appendChild(button);
+      button.innerHTML = `
+      <strong>${escapeHtml(show.label)}</strong>
+      <span>${formatDuration(getShowDuration(show))}</span>
+      <small>${escapeHtml(show.summary)}</small>
+    `;
+      button.onclick = () => runShow(show);
+      els.showGrid.appendChild(button);
+    }
+  }
+  function runCustomShow() {
+    try {
+      const show = parseCustomShow(els.customShowInput.value);
+      runShow(show);
+    } catch (err) {
+      addLog(`Show custom invalido: ${err.message}`);
     }
   }
   function escapeHtml(value) {
@@ -2323,7 +2375,8 @@
     });
   }
   els.connectBtn.onclick = connectOps;
+  els.runCustomShowBtn.onclick = runCustomShow;
   buildSceneButtons();
-  buildSequenceButtons();
+  buildShowButtons();
   connectOps();
 })();
