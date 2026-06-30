@@ -1,8 +1,12 @@
 (() => {
+  var __defProp = Object.defineProperty;
+  var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+  var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+
   // src/shared/sync/clock.js
   function computeClockOffset(samples) {
     if (!samples.length) return 0;
-    const sorted = [...samples].sort((a, b) => a.rtt - b.rtt);
+    const sorted = [...samples].sort((a, b2) => a.rtt - b2.rtt);
     const best = sorted.slice(0, Math.min(4, sorted.length));
     return best.reduce((sum, s) => sum + s.offset, 0) / best.length;
   }
@@ -23,380 +27,522 @@
     }
     return computeClockOffset(samples);
   }
-  async function waitUntilExecute(executeAt, clockOffset2) {
-    const delay = executeAt + clockOffset2 - Date.now();
-    if (delay > 0) {
-      await new Promise((r) => setTimeout(r, delay));
+
+  // src/client/audience/lights/ScreenLight.js
+  var ScreenLight = class {
+    constructor(element, options = {}) {
+      this.element = element;
+      this.themeMeta = options.themeMeta || null;
     }
-  }
+    show(color = "#ffffff") {
+      if (!this.element) return;
+      this.element.hidden = false;
+      this.element.style.background = color;
+      if (this.themeMeta) this.themeMeta.content = color;
+    }
+    setOpacity(opacity) {
+      if (!this.element) return;
+      this.element.style.opacity = String(Math.max(0, Math.min(1, opacity)));
+    }
+    off() {
+      if (!this.element) return;
+      this.element.style.opacity = "1";
+      this.element.style.background = "#000000";
+      this.element.hidden = true;
+      if (this.themeMeta) this.themeMeta.content = "#050505";
+    }
+  };
 
-  // src/shared/patterns/rainbow.js
-  function computeRainbowColor(seat, grid, pattern) {
-    const hue = (seat.col / Math.max(grid.cols, 1) * 360 + seat.row / Math.max(grid.rows, 1) * 30) % 360;
-    return `hsl(${hue}, 100%, 50%)`;
-  }
-
-  // src/shared/patterns/wave.js
-  async function executeWave(seat, pattern, { showColor: showColor2, hideColor: hideColor2 }) {
-    const grid = pattern.grid || { rows: 6, cols: 8 };
-    const { direction = "left-right", speed = 200, color = "#007AFF" } = pattern;
-    let steps;
-    if (direction === "left-right") steps = seat.col;
-    else if (direction === "right-left") steps = grid.cols - 1 - seat.col;
-    else if (direction === "top-bottom") steps = seat.row;
-    else if (direction === "bottom-top") steps = grid.rows - 1 - seat.row;
-    else if (direction === "table-order") steps = pattern.waveStep ?? 0;
-    else steps = seat.col;
-    await new Promise((r) => setTimeout(r, steps * speed));
-    showColor2(color);
-    await new Promise((r) => setTimeout(r, speed * 3));
-    hideColor2();
-  }
-
-  // src/shared/patterns/sequence.js
-  async function executeSequence(seat, pattern, { showColor: showColor2, hideColor: hideColor2 }) {
-    const { frames = [], intervalMs = 500 } = pattern;
-    for (const frame of frames) {
-      if (frame.all) {
-        showColor2(frame.all);
-      } else if (frame.cells) {
-        const cell = frame.cells.find(
-          (c) => c[0] === seat.row && c[1] === seat.col
-        );
-        if (cell) showColor2(cell[2]);
-        else hideColor2();
+  // src/client/audience/lights/TorchLight.js
+  var TorchLight = class {
+    constructor(mediaDevices = navigator.mediaDevices) {
+      this.mediaDevices = mediaDevices;
+      this.track = null;
+      this.available = false;
+    }
+    async prepare() {
+      if (!this.mediaDevices?.getUserMedia) return false;
+      try {
+        const stream = await this.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false
+        });
+        const [track] = stream.getVideoTracks();
+        this.track = track;
+        this.available = await this._supportsTorch(track);
+        if (!this.available) this.stop();
+        return this.available;
+      } catch {
+        this.available = false;
+        this.stop();
+        return false;
       }
-      await new Promise(
-        (r) => setTimeout(r, frame.intervalMs ?? intervalMs)
-      );
     }
-    hideColor2();
-  }
-
-  // src/shared/patterns/strobe.js
-  async function executeStrobe(pattern, { showColor: showColor2, hideColor: hideColor2 }) {
-    const interval = pattern.interval || 150;
-    const duration = pattern.duration || 3e3;
-    const color = pattern.color || "#FFFFFF";
-    const start = Date.now();
-    while (Date.now() - start < duration) {
-      showColor2(color);
-      await new Promise((r) => setTimeout(r, interval));
-      hideColor2();
-      await new Promise((r) => setTimeout(r, interval));
-    }
-    hideColor2();
-  }
-
-  // src/shared/patterns/color.js
-  async function executeFlash(pattern, { showColor: showColor2, hideColor: hideColor2 }) {
-    showColor2(pattern.color || "#FFFFFF");
-    await new Promise((r) => setTimeout(r, pattern.duration || 500));
-    hideColor2();
-  }
-
-  // src/shared/patterns/index.js
-  async function executePattern(seat, pattern, clockOffset2, callbacks) {
-    if (pattern.executeAt) {
-      await waitUntilExecute(pattern.executeAt, clockOffset2);
-    }
-    const ctx = { ...callbacks, seat, grid: pattern.grid };
-    switch (pattern.action) {
-      case "color":
-        callbacks.showColor(pattern.color || "#FFFFFF");
-        break;
-      case "off":
-        callbacks.hideColor();
-        break;
-      case "flash":
-        await executeFlash(pattern, callbacks);
-        break;
-      case "strobe":
-        await executeStrobe(pattern, callbacks);
-        break;
-      case "wave":
-        await executeWave(seat, pattern, callbacks);
-        break;
-      case "sequence":
-        await executeSequence(seat, pattern, callbacks);
-        break;
-      case "rainbow":
-        callbacks.showColor(computeRainbowColor(seat, pattern.grid, pattern));
-        await new Promise((r) => setTimeout(r, pattern.duration || 5e3));
-        callbacks.hideColor();
-        break;
-      default:
-        break;
-    }
-    return ctx;
-  }
-
-  // src/shared/layout/parseLayout.js
-  var SEAT_SPREAD = 10;
-  function parseLayout(raw) {
-    if (!raw || !Array.isArray(raw.sections) || raw.sections.length === 0) {
-      throw new Error("Layout inv\xE1lido: se requiere al menos una secci\xF3n");
-    }
-    const seats = [];
-    let gridRows = 0;
-    let gridCols = 0;
-    for (const section of raw.sections) {
-      if (!section.id || !Array.isArray(section.tables)) {
-        throw new Error(`Secci\xF3n inv\xE1lida: ${section.id || "sin id"}`);
+    async set(enabled) {
+      if (!this.available || !this.track) return false;
+      try {
+        await this.track.applyConstraints({
+          advanced: [{ torch: Boolean(enabled) }]
+        });
+        return true;
+      } catch {
+        return false;
       }
-      for (const table of section.tables) {
-        if (!table.id || typeof table.seats !== "number" || table.seats < 1) {
-          throw new Error(`Mesa inv\xE1lida en ${section.id}: ${table.id || "sin id"}`);
+    }
+    stop() {
+      if (this.track) {
+        this.track.stop();
+        this.track = null;
+      }
+      this.available = false;
+    }
+    async _supportsTorch(track) {
+      const capabilities = typeof track.getCapabilities === "function" ? track.getCapabilities() : {};
+      if (!capabilities.torch) return false;
+      this.available = true;
+      return this.set(false);
+    }
+  };
+
+  // node_modules/web-haptics/dist/chunk-4NSAIXAB.mjs
+  var b = { success: { pattern: [{ duration: 30, intensity: 0.5 }, { delay: 60, duration: 40, intensity: 1 }] }, warning: { pattern: [{ duration: 40, intensity: 0.8 }, { delay: 100, duration: 40, intensity: 0.6 }] }, error: { pattern: [{ duration: 40, intensity: 0.9 }, { delay: 40, duration: 40, intensity: 0.9 }, { delay: 40, duration: 40, intensity: 0.9 }] }, light: { pattern: [{ duration: 15, intensity: 0.4 }] }, medium: { pattern: [{ duration: 25, intensity: 0.7 }] }, heavy: { pattern: [{ duration: 35, intensity: 1 }] }, soft: { pattern: [{ duration: 40, intensity: 0.5 }] }, rigid: { pattern: [{ duration: 10, intensity: 1 }] }, selection: { pattern: [{ duration: 8, intensity: 0.3 }] }, nudge: { pattern: [{ duration: 80, intensity: 0.8 }, { delay: 80, duration: 50, intensity: 0.3 }] }, buzz: { pattern: [{ duration: 1e3, intensity: 1 }] } };
+  var g = 16;
+  var x = 184;
+  var m = 1e3;
+  var p = 20;
+  function C(o) {
+    if (typeof o == "number") return { vibrations: [{ duration: o }] };
+    if (typeof o == "string") {
+      let i = b[o];
+      return i ? { vibrations: i.pattern.map((t) => ({ ...t })) } : (console.warn(`[web-haptics] Unknown preset: "${o}"`), null);
+    }
+    if (Array.isArray(o)) {
+      if (o.length === 0) return { vibrations: [] };
+      if (typeof o[0] == "number") {
+        let i = o, t = [];
+        for (let e = 0; e < i.length; e += 2) {
+          let n = e > 0 ? i[e - 1] : 0;
+          t.push({ ...n > 0 && { delay: n }, duration: i[e] });
         }
-        for (let seatIndex = 0; seatIndex < table.seats; seatIndex++) {
-          const row = table.row;
-          const col = table.col * SEAT_SPREAD + seatIndex;
-          gridRows = Math.max(gridRows, row + 1);
-          gridCols = Math.max(gridCols, col + 1);
-          seats.push({
-            sectionId: section.id,
-            sectionLabel: section.label || section.id,
-            tableId: table.id,
-            tableLabel: table.label || table.id,
-            seatIndex,
-            tableRow: table.row,
-            tableCol: table.col,
-            row,
-            col,
-            seatKey: `${section.id}:${table.id}:${seatIndex}`,
-            label: `${section.label || section.id} \xB7 ${table.label || table.id} \xB7 Asiento ${seatIndex + 1}`
-          });
+        return { vibrations: t };
+      }
+      return { vibrations: o.map((i) => ({ ...i })) };
+    }
+    return { vibrations: o.pattern.map((i) => ({ ...i })) };
+  }
+  function w(o, i) {
+    if (i >= 1) return [o];
+    if (i <= 0) return [];
+    let t = Math.max(1, Math.round(p * i)), e = p - t, n = [], s = o;
+    for (; s >= p; ) n.push(t), n.push(e), s -= p;
+    if (s > 0) {
+      let a = Math.max(1, Math.round(s * i));
+      n.push(a);
+      let r = s - a;
+      r > 0 && n.push(r);
+    }
+    return n;
+  }
+  function M(o, i) {
+    let t = [];
+    for (let e = 0; e < o.length; e++) {
+      let n = o[e], s = Math.max(0, Math.min(1, n.intensity ?? i)), a = n.delay ?? 0;
+      a > 0 && (t.length > 0 && t.length % 2 === 0 ? t[t.length - 1] += a : (t.length === 0 && t.push(0), t.push(a)));
+      let r = w(n.duration, s);
+      if (r.length === 0) {
+        t.length > 0 && t.length % 2 === 0 ? t[t.length - 1] += n.duration : n.duration > 0 && (t.push(0), t.push(n.duration));
+        continue;
+      }
+      for (let d of r) t.push(d);
+    }
+    return t;
+  }
+  var I = 0;
+  var _a;
+  var v = (_a = class {
+    constructor(i) {
+      __publicField(this, "hapticLabel", null);
+      __publicField(this, "domInitialized", false);
+      __publicField(this, "instanceId");
+      __publicField(this, "debug");
+      __publicField(this, "showSwitch");
+      __publicField(this, "rafId", null);
+      __publicField(this, "patternResolve", null);
+      __publicField(this, "audioCtx", null);
+      __publicField(this, "audioFilter", null);
+      __publicField(this, "audioGain", null);
+      __publicField(this, "audioBuffer", null);
+      this.instanceId = ++I, this.debug = i?.debug ?? false, this.showSwitch = i?.showSwitch ?? false;
+    }
+    async trigger(i = [{ duration: 25, intensity: 0.7 }], t) {
+      let e = C(i);
+      if (!e) return;
+      let { vibrations: n } = e;
+      if (n.length === 0) return;
+      let s = Math.max(0, Math.min(1, t?.intensity ?? 0.5));
+      for (let a of n) if (a.duration > m && (a.duration = m), !Number.isFinite(a.duration) || a.duration < 0 || a.delay !== void 0 && (!Number.isFinite(a.delay) || a.delay < 0)) {
+        console.warn("[web-haptics] Invalid vibration values. Durations and delays must be finite non-negative numbers.");
+        return;
+      }
+      if (_a.isSupported && navigator.vibrate(M(n, s)), !_a.isSupported || this.debug) {
+        if (this.ensureDOM(), !this.hapticLabel) return;
+        this.debug && await this.ensureAudio(), this.stopPattern();
+        let r = (n[0]?.delay ?? 0) === 0;
+        if (r && (this.hapticLabel.click(), this.debug && this.audioCtx)) {
+          let d = Math.max(0, Math.min(1, n[0].intensity ?? s));
+          this.playClick(d);
         }
+        await this.runPattern(n, s, r);
       }
     }
-    return {
-      ...raw,
-      seats,
-      grid: { rows: gridRows, cols: gridCols },
-      seatCount: seats.length
-    };
-  }
+    cancel() {
+      this.stopPattern(), _a.isSupported && navigator.vibrate(0);
+    }
+    destroy() {
+      this.stopPattern(), this.hapticLabel && (this.hapticLabel.remove(), this.hapticLabel = null, this.domInitialized = false), this.audioCtx && (this.audioCtx.close(), this.audioCtx = null, this.audioFilter = null, this.audioGain = null, this.audioBuffer = null);
+    }
+    setDebug(i) {
+      this.debug = i, !i && this.audioCtx && (this.audioCtx.close(), this.audioCtx = null, this.audioFilter = null, this.audioGain = null, this.audioBuffer = null);
+    }
+    setShowSwitch(i) {
+      if (this.showSwitch = i, this.hapticLabel) {
+        let t = this.hapticLabel.querySelector("input");
+        this.hapticLabel.style.display = i ? "" : "none", t && (t.style.display = i ? "" : "none");
+      }
+    }
+    stopPattern() {
+      this.rafId !== null && (cancelAnimationFrame(this.rafId), this.rafId = null), this.patternResolve?.(), this.patternResolve = null;
+    }
+    runPattern(i, t, e) {
+      return new Promise((n) => {
+        this.patternResolve = n;
+        let s = [], a = 0;
+        for (let u of i) {
+          let c = Math.max(0, Math.min(1, u.intensity ?? t)), l = u.delay ?? 0;
+          l > 0 && (a += l, s.push({ end: a, isOn: false, intensity: 0 })), a += u.duration, s.push({ end: a, isOn: true, intensity: c });
+        }
+        let r = a, d = 0, h = -1, y = (u) => {
+          d === 0 && (d = u);
+          let c = u - d;
+          if (c >= r) {
+            this.rafId = null, this.patternResolve = null, n();
+            return;
+          }
+          let l = s[0];
+          for (let f of s) if (c < f.end) {
+            l = f;
+            break;
+          }
+          if (l.isOn) {
+            let f = g + (1 - l.intensity) * x;
+            h === -1 ? (h = u, e || (this.hapticLabel?.click(), this.debug && this.audioCtx && this.playClick(l.intensity), e = true)) : u - h >= f && (this.hapticLabel?.click(), this.debug && this.audioCtx && this.playClick(l.intensity), h = u);
+          }
+          this.rafId = requestAnimationFrame(y);
+        };
+        this.rafId = requestAnimationFrame(y);
+      });
+    }
+    playClick(i) {
+      if (!this.audioCtx || !this.audioFilter || !this.audioGain || !this.audioBuffer) return;
+      let t = this.audioBuffer.getChannelData(0);
+      for (let a = 0; a < t.length; a++) t[a] = (Math.random() * 2 - 1) * Math.exp(-a / 25);
+      this.audioGain.gain.value = 0.5 * i;
+      let e = 2e3 + i * 2e3, n = 1 + (Math.random() - 0.5) * 0.3;
+      this.audioFilter.frequency.value = e * n;
+      let s = this.audioCtx.createBufferSource();
+      s.buffer = this.audioBuffer, s.connect(this.audioFilter), s.onended = () => s.disconnect(), s.start();
+    }
+    async ensureAudio() {
+      if (!this.audioCtx && typeof AudioContext < "u") {
+        this.audioCtx = new AudioContext(), this.audioFilter = this.audioCtx.createBiquadFilter(), this.audioFilter.type = "bandpass", this.audioFilter.frequency.value = 4e3, this.audioFilter.Q.value = 8, this.audioGain = this.audioCtx.createGain(), this.audioFilter.connect(this.audioGain), this.audioGain.connect(this.audioCtx.destination);
+        let i = 4e-3;
+        this.audioBuffer = this.audioCtx.createBuffer(1, this.audioCtx.sampleRate * i, this.audioCtx.sampleRate);
+        let t = this.audioBuffer.getChannelData(0);
+        for (let e = 0; e < t.length; e++) t[e] = (Math.random() * 2 - 1) * Math.exp(-e / 25);
+      }
+      this.audioCtx?.state === "suspended" && await this.audioCtx.resume();
+    }
+    ensureDOM() {
+      if (this.domInitialized || typeof document > "u") return;
+      let i = `web-haptics-${this.instanceId}`, t = document.createElement("label");
+      t.setAttribute("for", i), t.textContent = "Haptic feedback", t.style.position = "fixed", t.style.bottom = "10px", t.style.left = "10px", t.style.padding = "5px 10px", t.style.backgroundColor = "rgba(0, 0, 0, 0.7)", t.style.color = "white", t.style.fontFamily = "sans-serif", t.style.fontSize = "14px", t.style.borderRadius = "4px", t.style.zIndex = "9999", t.style.userSelect = "none", this.hapticLabel = t;
+      let e = document.createElement("input");
+      e.type = "checkbox", e.setAttribute("switch", ""), e.id = i, e.style.all = "initial", e.style.appearance = "auto", this.showSwitch || (t.style.display = "none", e.style.display = "none"), t.appendChild(e), document.body.appendChild(t), this.domInitialized = true;
+    }
+  }, __publicField(_a, "isSupported", typeof navigator < "u" && typeof navigator.vibrate == "function"), _a);
 
-  // src/shared/layout/waveOrder.js
-  function buildTableWaveIndex(layout2) {
-    const tables = /* @__PURE__ */ new Map();
-    for (const section of layout2.sections) {
-      for (const table of section.tables) {
-        const key = `${section.id}:${table.id}`;
-        if (!tables.has(key)) {
-          tables.set(key, { tableRow: table.row, tableCol: table.col, key });
+  // src/client/audience/lights/HapticsFeedback.js
+  var HapticsFeedback = class {
+    constructor() {
+      this.available = Boolean(v?.isSupported);
+      this.instance = null;
+      if (this.available) {
+        try {
+          this.instance = new v();
+        } catch {
+          this.available = false;
         }
       }
     }
-    const sorted = [...tables.values()].sort((a, b) => {
-      if (a.tableRow !== b.tableRow) return a.tableRow - b.tableRow;
-      return a.tableCol - b.tableCol;
-    });
-    const indexByKey = /* @__PURE__ */ new Map();
-    sorted.forEach((t, i) => indexByKey.set(t.key, i));
-    return indexByKey;
-  }
+    async trigger(input = "nudge", options) {
+      if (!this.instance) return false;
+      try {
+        await this.instance.trigger(input, options);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+    cancel() {
+      this.instance?.cancel?.();
+    }
+    destroy() {
+      this.instance?.destroy?.();
+      this.instance = null;
+    }
+  };
+
+  // src/client/audience/show/SceneRunner.js
+  var SceneRunner = class {
+    constructor(options) {
+      this.screen = options.screen;
+      this.torch = options.torch;
+      this.haptics = options.haptics;
+      this.groupId = options.groupId || 0;
+      this.groupCount = options.groupCount || 8;
+      this.clockOffset = options.clockOffset || 0;
+      this.wait = options.wait || ((ms) => new Promise((r) => setTimeout(r, ms)));
+      this.now = options.now || (() => Date.now());
+      this.timers = /* @__PURE__ */ new Set();
+      this.cancelled = false;
+    }
+    async run(scene) {
+      this.cancel();
+      this.cancelled = false;
+      const delay = scene.executeAt ? scene.executeAt + this.clockOffset - this.now() : 0;
+      if (delay > 0) await this._sleep(delay);
+      if (this.cancelled) return;
+      switch (scene.action) {
+        case "solid":
+          this.screen.show(scene.color);
+          if (scene.useTorch) await this.torch.set(true);
+          break;
+        case "off":
+          await this._allOff();
+          break;
+        case "flash":
+          await this._flash(scene);
+          break;
+        case "pulse":
+          await this._pulse(scene);
+          break;
+        case "strobe":
+          await this._strobe(scene);
+          break;
+        case "sparkle":
+          await this._sparkle(scene);
+          break;
+        case "burst":
+          await this._burst(scene);
+          break;
+        default:
+          break;
+      }
+    }
+    cancel() {
+      this.cancelled = true;
+      for (const timer of this.timers) clearTimeout(timer);
+      this.timers.clear();
+      this.haptics?.cancel?.();
+    }
+    async _flash(scene) {
+      this.screen.show(scene.color);
+      if (scene.useTorch) await this.torch.set(true);
+      await this.haptics?.trigger?.(80, { intensity: scene.intensity || 0.8 });
+      await this._sleep(scene.duration || 120);
+      await this._allOff();
+    }
+    async _pulse(scene) {
+      const duration = scene.duration || 3e3;
+      const startedAt = this.now();
+      this.screen.show(scene.color);
+      if (scene.useTorch) await this.torch.set(true);
+      while (!this.cancelled && this.now() - startedAt < duration) {
+        const progress = (this.now() - startedAt) / duration;
+        const opacity = 0.2 + Math.sin(progress * Math.PI) * 0.8;
+        this.screen.setOpacity(opacity);
+        await this._sleep(32);
+      }
+      this.screen.setOpacity(1);
+      if (scene.useTorch) await this.torch.set(false);
+    }
+    async _strobe(scene) {
+      const duration = scene.duration || 3e3;
+      const interval = Math.max(60, Math.round(6e4 / (scene.tempo || 120) / 2));
+      const startedAt = this.now();
+      let on = false;
+      while (!this.cancelled && this.now() - startedAt < duration) {
+        on = !on;
+        if (on) {
+          this.screen.show(scene.color);
+          if (scene.useTorch) await this.torch.set(true);
+        } else {
+          await this._allOff();
+        }
+        await this._sleep(interval);
+      }
+      await this._allOff();
+    }
+    async _sparkle(scene) {
+      const duration = scene.duration || 4e3;
+      const startedAt = this.now();
+      const offset = this.groupId * 37;
+      while (!this.cancelled && this.now() - startedAt < duration) {
+        const active = Math.random() > 0.65;
+        if (active) {
+          this.screen.show(scene.color);
+          if (scene.useTorch) await this.torch.set(true);
+          await this._sleep(60 + offset);
+        }
+        await this._allOff();
+        await this._sleep(80 + Math.random() * 220);
+      }
+      await this._allOff();
+    }
+    async _burst(scene) {
+      const duration = scene.duration || 4e3;
+      const step = Math.max(80, duration / this.groupCount);
+      const targetDelay = this.groupId * step;
+      await this._sleep(targetDelay);
+      if (this.cancelled) return;
+      await this._flash({ ...scene, duration: Math.min(180, step) });
+    }
+    async _allOff() {
+      await this.torch?.set?.(false);
+      this.screen.off();
+    }
+    _sleep(ms) {
+      if (ms <= 0) return Promise.resolve();
+      return new Promise((resolve) => {
+        const timer = setTimeout(() => {
+          this.timers.delete(timer);
+          resolve();
+        }, ms);
+        this.timers.add(timer);
+      });
+    }
+  };
 
   // src/client/audience/main.js
   var params = new URLSearchParams(window.location.search);
   var eventId = params.get("event") || "hipico-demo";
+  var tokenKey = `hls_token_${eventId}`;
   var socket;
-  var layout;
+  var runner;
+  var torch;
+  var haptics;
+  var wakeLock = null;
+  var sessionToken = localStorage.getItem(tokenKey);
   var clockOffset = 0;
-  var mySeat = null;
-  var sessionToken = localStorage.getItem(`sl_token_${eventId}`);
-  var selectedSection = null;
-  var selectedTable = null;
-  var occupancy = /* @__PURE__ */ new Set();
-  var screens = {
-    welcome: document.getElementById("welcomeScreen"),
-    section: document.getElementById("sectionScreen"),
-    table: document.getElementById("tableScreen"),
-    seat: document.getElementById("seatScreen"),
-    waiting: document.getElementById("waitingScreen")
+  var els = {
+    start: document.getElementById("startBtn"),
+    status: document.getElementById("statusText"),
+    readyTitle: document.getElementById("readyTitle"),
+    readyDetail: document.getElementById("readyDetail"),
+    joinPanel: document.getElementById("joinPanel"),
+    readyPanel: document.getElementById("readyPanel"),
+    showScreen: document.getElementById("showScreen"),
+    info: document.getElementById("infoOverlay"),
+    count: document.getElementById("readyCount")
   };
-  function showScreen(name) {
-    Object.values(screens).forEach((el) => el.classList.remove("active"));
-    if (screens[name]) screens[name].classList.add("active");
+  var screen = new ScreenLight(els.showScreen, {
+    themeMeta: document.querySelector('meta[name="theme-color"]')
+  });
+  function setStatus(text) {
+    els.status.textContent = text;
+    els.info.textContent = text;
   }
-  async function loadLayout() {
-    const res = await fetch(`/api/layout/${eventId}`);
-    if (!res.ok) throw new Error("No se pudo cargar el evento");
-    layout = parseLayout(await res.json());
-    if (layout.branding?.primaryColor) {
-      document.querySelector('meta[name="theme-color"]').content = layout.branding.primaryColor;
-    }
+  async function prepareDevice() {
+    haptics = new HapticsFeedback();
+    torch = new TorchLight();
+    await requestFullscreen();
+    await requestWakeLock();
+    const torchReady = await torch.prepare();
+    await haptics.trigger(torchReady ? "success" : "nudge");
+    return {
+      screen: true,
+      torch: torchReady,
+      haptics: haptics.available,
+      wakeLock: Boolean(wakeLock),
+      fullscreen: Boolean(document.fullscreenElement)
+    };
   }
-  function renderSections() {
-    const list = document.getElementById("sectionList");
-    list.innerHTML = "";
-    for (const section of layout.sections) {
-      const btn = document.createElement("button");
-      btn.className = "section-btn";
-      btn.textContent = `${section.label} (${section.tables.length} mesas)`;
-      btn.onclick = () => {
-        selectedSection = section;
-        renderTables();
-        showScreen("table");
-      };
-      list.appendChild(btn);
-    }
-  }
-  function renderTables() {
-    document.getElementById("tableScreenTitle").textContent = selectedSection.label;
-    const map = document.getElementById("tableMap");
-    map.innerHTML = "";
-    const maxCol = Math.max(...selectedSection.tables.map((t) => t.col), 0) + 1;
-    map.style.gridTemplateColumns = `repeat(${Math.min(maxCol, 4)}, 1fr)`;
-    for (const table of selectedSection.tables) {
-      const cell = document.createElement("button");
-      cell.className = "table-cell";
-      cell.textContent = table.label || table.id;
-      const fullyOccupied = isTableFull(selectedSection.id, table);
-      if (fullyOccupied) cell.classList.add("occupied");
-      cell.onclick = () => {
-        if (fullyOccupied) return;
-        selectedTable = table;
-        renderSeats();
-        showScreen("seat");
-      };
-      map.appendChild(cell);
-    }
-  }
-  function isTableFull(sectionId, table) {
-    for (let i = 0; i < table.seats; i++) {
-      if (!occupancy.has(`${sectionId}:${table.id}:${i}`)) return false;
-    }
-    return true;
-  }
-  function renderSeats() {
-    document.getElementById("seatScreenTitle").textContent = `${selectedTable.label || selectedTable.id}`;
-    const picker = document.getElementById("seatPicker");
-    picker.innerHTML = "";
-    document.getElementById("joinError").style.display = "none";
-    for (let i = 0; i < selectedTable.seats; i++) {
-      const key = `${selectedSection.id}:${selectedTable.id}:${i}`;
-      const btn = document.createElement("button");
-      btn.className = "seat-btn";
-      btn.textContent = i + 1;
-      if (occupancy.has(key)) btn.classList.add("occupied");
-      btn.onclick = () => joinSeat(i);
-      picker.appendChild(btn);
-    }
-  }
-  function connectSocket() {
+  function connect(capabilities) {
     socket = io({ reconnection: true, reconnectionDelay: 1e3 });
     socket.on("connect", async () => {
-      document.getElementById("infoOverlay").textContent = "\u{1F7E2} Conectado";
-      clockOffset = await syncClockWithSocket(socket);
-      socket.emit("get_occupancy", { eventId });
-      if (sessionToken) {
-        tryReconnect();
-      }
+      setStatus("Sincronizando...");
+      clockOffset = await syncClockWithSocket(socket, 5);
+      socket.emit("join_show", {
+        eventId,
+        sessionToken,
+        capabilities
+      });
     });
     socket.on("disconnect", () => {
-      document.getElementById("infoOverlay").textContent = "\u{1F534} Desconectado";
+      setStatus("Reconectando...");
     });
-    socket.on("occupancy_update", (data) => {
-      occupancy = new Set((data.occupancy || []).map((o) => o.seatKey));
-      if (screens.seat.classList.contains("active")) renderSeats();
-      if (screens.table.classList.contains("active")) renderTables();
-    });
-    socket.on("join_error", (data) => {
-      const err = document.getElementById("joinError");
-      err.textContent = data.error || "Error al unirse";
-      err.style.display = "block";
-      sessionToken = null;
-      localStorage.removeItem(`sl_token_${eventId}`);
-    });
-    socket.on("joined", (data) => {
-      mySeat = data;
+    socket.on("show_joined", (data) => {
       sessionToken = data.sessionToken;
-      localStorage.setItem(`sl_token_${eventId}`, sessionToken);
-      showScreen("waiting");
-      document.getElementById("positionBadge").textContent = data.label;
-      document.getElementById("statusText").textContent = `${data.participantCount} participantes conectados`;
-      requestWakeLock();
+      localStorage.setItem(tokenKey, sessionToken);
+      runner = new SceneRunner({
+        screen,
+        torch,
+        haptics,
+        groupId: data.groupId,
+        groupCount: 8,
+        clockOffset
+      });
+      els.joinPanel.hidden = true;
+      els.readyPanel.hidden = false;
+      els.readyTitle.textContent = data.capabilities.torch ? "Listo con pantalla + flash" : "Listo con pantalla";
+      els.readyDetail.textContent = "Levanta tu telefono cuando empiece el show.";
+      updateStats(data.stats);
+      setStatus("Listo");
     });
-    socket.on("pattern", (data) => {
-      runPattern(data);
-    });
-    socket.on("pixel", (data) => {
-      showColor(data.color);
-    });
-  }
-  function tryReconnect() {
-    socket.emit("join_event", {
-      eventId,
-      sessionToken
-    });
-  }
-  function joinSeat(seatIndex) {
-    socket.emit("join_event", {
-      eventId,
-      sectionId: selectedSection.id,
-      tableId: selectedTable.id,
-      seatIndex
+    socket.on("show_stats", (data) => updateStats(data.stats));
+    socket.on("scene", (scene) => {
+      runner?.run(scene);
     });
   }
-  function autoJoinSeat() {
-    socket.emit("join_event", {
-      eventId,
-      sectionId: selectedSection.id,
-      tableId: selectedTable.id,
-      autoAssignSeat: true
-    });
+  function updateStats(stats = {}) {
+    els.count.textContent = String(stats.readyCount ?? 0);
   }
-  async function runPattern(pattern) {
-    const seat = {
-      sectionId: mySeat.sectionId,
-      tableId: mySeat.tableId,
-      seatIndex: mySeat.seatIndex,
-      row: mySeat.row,
-      col: mySeat.col,
-      seatKey: mySeat.seatKey
-    };
-    const enriched = { ...pattern, grid: layout?.grid || pattern.grid };
-    if (pattern.action === "wave" && pattern.direction === "table-order" && layout) {
-      const waveIndex = buildTableWaveIndex(layout);
-      enriched.waveStep = waveIndex.get(`${seat.sectionId}:${seat.tableId}`) ?? 0;
-    }
-    await executePattern(seat, enriched, clockOffset, { showColor, hideColor });
-  }
-  function showColor(color) {
-    const show = document.getElementById("showScreen");
-    show.style.display = "block";
-    show.style.backgroundColor = color;
-    document.querySelector('meta[name="theme-color"]').content = color;
-  }
-  function hideColor() {
-    document.getElementById("showScreen").style.display = "none";
-    const brand = layout?.branding?.primaryColor || "#1a472a";
-    document.querySelector('meta[name="theme-color"]').content = brand;
-  }
-  async function requestWakeLock() {
+  async function requestFullscreen() {
     try {
-      if ("wakeLock" in navigator) {
-        await navigator.wakeLock.request("screen");
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen?.();
       }
     } catch {
     }
   }
-  document.getElementById("startBtn").onclick = () => {
-    renderSections();
-    showScreen("section");
-  };
-  document.getElementById("autoSeatBtn").onclick = autoJoinSeat;
-  document.querySelectorAll("[data-back]").forEach((btn) => {
-    btn.onclick = () => showScreen(btn.dataset.back);
-  });
-  async function init() {
+  async function requestWakeLock() {
     try {
-      await loadLayout();
-      connectSocket();
-    } catch (err) {
-      document.getElementById("infoOverlay").textContent = "\u274C " + err.message;
+      if ("wakeLock" in navigator) {
+        wakeLock = await navigator.wakeLock.request("screen");
+      }
+    } catch {
+      wakeLock = null;
     }
   }
-  init();
+  els.start.onclick = async () => {
+    els.start.disabled = true;
+    setStatus("Preparando...");
+    const capabilities = await prepareDevice();
+    connect(capabilities);
+  };
+  window.addEventListener("beforeunload", () => {
+    runner?.cancel();
+    torch?.stop();
+    haptics?.destroy();
+  });
 })();

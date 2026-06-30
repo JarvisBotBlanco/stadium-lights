@@ -6,13 +6,16 @@
   "main": "src/server/index.js",
   "scripts": {
     "build": "node scripts/build.js",
+    "test": "node --test",
     "prestart": "npm run build",
     "start": "node src/server/index.js",
     "dev": "npm run build && node src/server/index.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "socket.io": "^4.7.4"
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.7.4",
+    "web-haptics": "^0.0.6"
   },
   "devDependencies": {
     "esbuild": "^0.25.0"

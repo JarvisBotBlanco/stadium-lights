@@ -6,51 +6,33 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#1a472a">
+  <meta name="theme-color" content="#050505">
   <link rel="manifest" href="/manifest.json">
   <link rel="stylesheet" href="/audience.css">
-  <title>Stadium Lights — HIPICO</title>
+  <title>Hipico Light Show</title>
 </head>
 <body>
-  <div id="welcomeScreen" class="screen active">
-    <h1>🏇 Light Show</h1>
-    <p>Sincroniza tu teléfono con el show del evento</p>
-    <p style="font-size:0.8rem;color:#555;margin-bottom:24px;">
-      Sube el brillo al máximo y no bloquees la pantalla
-    </p>
-    <button class="btn btn-primary" id="startBtn">Participar</button>
-  </div>
+  <main class="app-shell">
+    <section id="joinPanel" class="panel">
+      <p class="eyebrow">Hipico Light Show</p>
+      <h1>Tu telefono es parte del show</h1>
+      <p class="copy">Sube el brillo, toca participar y manten la pantalla hacia la pista.</p>
+      <button class="primary-btn" id="startBtn">Entrar al show</button>
+      <p class="status-line" id="statusText">Esperando...</p>
+    </section>
 
-  <div id="sectionScreen" class="screen">
-    <h1>Elige tu grada</h1>
-    <p>¿En qué sección estás?</p>
-    <div class="section-list" id="sectionList"></div>
-    <button class="back-btn" data-back="welcome">← Volver</button>
-  </div>
+    <section id="readyPanel" class="panel ready-panel" hidden>
+      <div class="ready-dot"></div>
+      <h1 id="readyTitle">Listo</h1>
+      <p id="readyDetail" class="copy">Espera la senal del operador.</p>
+      <div class="counter">
+        <span id="readyCount">0</span>
+        <small>telefonos listos</small>
+      </div>
+    </section>
+  </main>
 
-  <div id="tableScreen" class="screen">
-    <h1 id="tableScreenTitle">Elige tu mesa</h1>
-    <p>Toca la mesa donde estás sentado</p>
-    <div class="table-map" id="tableMap"></div>
-    <button class="back-btn" data-back="section">← Cambiar grada</button>
-  </div>
-
-  <div id="seatScreen" class="screen">
-    <h1 id="seatScreenTitle">Elige tu asiento</h1>
-    <p>Selecciona tu lugar en la mesa</p>
-    <div class="seat-picker" id="seatPicker"></div>
-    <button class="btn btn-secondary" id="autoSeatBtn">Asignarme asiento libre</button>
-    <p class="error-msg" id="joinError" style="display:none;"></p>
-    <button class="back-btn" data-back="table">← Cambiar mesa</button>
-  </div>
-
-  <div id="waitingScreen" class="screen">
-    <div class="pulse"></div>
-    <div class="position-badge" id="positionBadge">---</div>
-    <div class="status-text" id="statusText">Esperando señal...</div>
-  </div>
-
-  <div id="showScreen"></div>
+  <div id="showScreen" hidden></div>
   <div id="infoOverlay">Conectando...</div>
 
   <script src="/socket.io/socket.io.js"></script>

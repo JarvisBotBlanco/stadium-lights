@@ -5,7 +5,9 @@ import { LayoutService } from './services/LayoutService.js';
 import { EventService } from './services/EventService.js';
 import { OccupancyService } from './services/OccupancyService.js';
 import { PatternBroadcastService } from './services/PatternBroadcastService.js';
+import { SimpleShowService } from './services/SimpleShowService.js';
 import {
+  registerSimpleShowHandlers,
   registerParticipantHandlers,
   registerOperatorHandlers
 } from './socket/handlers.js';
@@ -13,10 +15,12 @@ import {
 const layoutService = new LayoutService();
 const eventService = new EventService(layoutService);
 const occupancyService = new OccupancyService();
+const simpleShowService = new SimpleShowService();
 const services = {
   layoutService,
   eventService,
   occupancyService,
+  simpleShowService,
   patternService: null
 };
 
@@ -30,6 +34,7 @@ const io = new Server(server, {
 
 services.patternService = new PatternBroadcastService(io);
 
+registerSimpleShowHandlers(io, services);
 registerParticipantHandlers(io, services);
 registerOperatorHandlers(io, services);
 

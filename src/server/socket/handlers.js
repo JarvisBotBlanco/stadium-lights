@@ -1,3 +1,82 @@
+import { normalizeScene } from '../../shared/show/sceneValidator.js';
+
+const DEFAULT_EVENT_ID = 'hipico-demo';
+
+export function registerSimpleShowHandlers(io, services) {
+  const { simpleShowService } = services;
+
+  io.on('connection', (socket) => {
+    socket.on('join_show', (data = {}) => {
+      const eventId = data.eventId || DEFAULT_EVENT_ID;
+      const joined = simpleShowService.join(eventId, socket.id, data);
+
+      socket.data.simpleEventId = eventId;
+      socket.data.simpleSessionToken = joined.sessionToken;
+      socket.join(eventId);
+
+      socket.emit('show_joined', {
+        eventId,
+        sessionToken: joined.sessionToken,
+        groupId: joined.groupId,
+        capabilities: joined.capabilities,
+        stats: joined.stats,
+        serverTime: Date.now()
+      });
+
+      emitShowStats(io, simpleShowService, eventId);
+    });
+
+    socket.on('join_show_ops', (data = {}) => {
+      const eventId = data.eventId || DEFAULT_EVENT_ID;
+      socket.data.simpleOpsEventId = eventId;
+      socket.join(`${eventId}_show_ops`);
+      socket.emit('show_ops_ready', {
+        eventId,
+        stats: simpleShowService.getStats(eventId),
+        serverTime: Date.now()
+      });
+    });
+
+    socket.on('trigger_scene', (data = {}) => {
+      const eventId = data.eventId || DEFAULT_EVENT_ID;
+      try {
+        const scene = normalizeScene(data.scene || {}, {
+          now: Date.now(),
+          leadMs: Number(process.env.SCENE_LEAD_MS) || 1000
+        });
+
+        if (data.dryRun) {
+          socket.emit('scene_dry_run', { eventId, scene });
+          return;
+        }
+
+        io.to(eventId).emit('scene', scene);
+        io.to(`${eventId}_show_ops`).emit('scene_sent', {
+          eventId,
+          scene,
+          stats: simpleShowService.getStats(eventId)
+        });
+      } catch (err) {
+        socket.emit('show_error', { error: err.message });
+      }
+    });
+
+    socket.on('disconnect', () => {
+      const eventId = socket.data.simpleEventId;
+      if (!eventId) return;
+      simpleShowService.disconnect(socket.id);
+      emitShowStats(io, simpleShowService, eventId);
+    });
+  });
+}
+
+function emitShowStats(io, simpleShowService, eventId) {
+  io.to(`${eventId}_show_ops`).emit('show_stats', {
+    eventId,
+    stats: simpleShowService.getStats(eventId)
+  });
+}
+
 export function registerParticipantHandlers(io, services) {
   const { eventService, occupancyService, patternService } = services;
 

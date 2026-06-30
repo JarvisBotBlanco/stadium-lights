@@ -4,95 +4,60 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="/operator.css">
-  <title>Operador — Stadium Lights HIPICO</title>
+  <title>Operador - Hipico Light Show</title>
 </head>
 <body>
-  <div class="header">
-    <h1>🎛️ Panel de Operador</h1>
-    <div class="stats">
-      Conectados: <span id="participantCount">0</span>
-      &nbsp;|&nbsp;
-      Cobertura mesas: <span id="coveragePercent">0%</span>
-      &nbsp;|&nbsp;
-      Evento: <span id="currentEvent">hipico-demo</span>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Hipico Light Show</p>
+      <h1>Operador</h1>
     </div>
-  </div>
+    <div class="connection">
+      <span id="connectionState">Conectando</span>
+    </div>
+  </header>
 
-  <div class="container">
-    <div class="preview-panel">
-      <div class="preview-toolbar">
-        <label>
-          Simulación
-          <input type="range" id="fillSlider" min="0" max="100" value="100" step="25">
-          <span id="fillLabel">100%</span>
+  <main class="layout">
+    <section class="panel event-panel">
+      <h2>Evento</h2>
+      <div class="event-row">
+        <input id="eventIdInput" type="text" value="hipico-demo" aria-label="Evento">
+        <button id="connectBtn" class="btn">Conectar</button>
+      </div>
+      <canvas id="qrCanvas" width="180" height="180"></canvas>
+      <p id="qrUrl" class="qr-url">---</p>
+    </section>
+
+    <section class="panel stats-panel">
+      <h2>Estado</h2>
+      <div class="stats-grid">
+        <div><strong id="readyCount">0</strong><span>Listos</span></div>
+        <div><strong id="torchCount">0</strong><span>Con flash</span></div>
+        <div><strong id="screenOnlyCount">0</strong><span>Solo pantalla</span></div>
+        <div><strong id="hapticsCount">0</strong><span>Haptics</span></div>
+      </div>
+    </section>
+
+    <section class="panel controls-panel">
+      <div class="controls-head">
+        <h2>Escenas</h2>
+        <label class="toggle">
+          <input id="dryRunToggle" type="checkbox">
+          Dry-run
         </label>
-        <label>
-          <input type="checkbox" id="dryRunToggle" checked>
-          Dry-run (preview antes de enviar)
-        </label>
       </div>
-      <div id="venueCanvas"></div>
-      <div class="preview-legend">
-        <span><span class="legend-dot" style="background:#238636"></span> Teléfono real</span>
-        <span><span class="legend-dot" style="background:#484f58"></span> Simulado</span>
-        <span><span class="legend-dot" style="background:#58a6ff"></span> Patrón activo</span>
-      </div>
-    </div>
+      <label class="color-field">
+        <span>Color</span>
+        <input type="color" id="colorPicker" value="#1f8f4d">
+      </label>
+      <div id="sceneGrid" class="scene-grid"></div>
+    </section>
 
-    <div class="control-panel">
-      <div class="section">
-        <h2>Evento</h2>
-        <div class="event-input">
-          <input type="text" id="eventIdInput" value="hipico-demo" placeholder="ID del evento">
-          <select id="presetSelect">
-            <option value="hipico-demo">Grada lineal</option>
-            <option value="hipico-l-shape">Grada en L</option>
-          </select>
-        </div>
-        <button class="btn primary full" id="connectBtn">Conectar / Crear evento</button>
-        <div style="font-size:0.78rem;color:#484f58;margin-top:8px;">
-          URL pública: <span id="qrUrl" style="color:#58a6ff;word-break:break-all;">---</span>
-        </div>
-        <canvas id="qrCanvas" width="160" height="160"></canvas>
-      </div>
-
-      <div class="section">
-        <h2>Color sólido</h2>
-        <div class="color-row">
-          <input type="color" id="colorPicker" value="#007AFF">
-          <button class="btn primary" id="applyColorBtn" style="flex:1">Aplicar</button>
-          <button class="btn danger" id="offBtn">Off</button>
-        </div>
-        <div class="preset-colors" id="presetColors"></div>
-      </div>
-
-      <div class="section">
-        <h2>Patrones</h2>
-        <button class="pattern-btn" data-pattern="strobe">⚡ Estroboscopio</button>
-        <button class="pattern-btn" data-pattern="wave-lr">🌊 Ola mesas →</button>
-        <button class="pattern-btn" data-pattern="wave-table">🌊 Ola orden físico</button>
-        <button class="pattern-btn" data-pattern="rainbow">🌈 Arcoíris</button>
-        <button class="pattern-btn" data-pattern="heartbeat">❤️ Latido</button>
-        <button class="pattern-btn" data-pattern="flag">🇲🇽 Bandera MX</button>
-        <button class="pattern-btn" data-pattern="fire">🔥 Fuego</button>
-        <button class="pattern-btn" data-pattern="countdown">🏇 Countdown salida</button>
-      </div>
-
-      <div class="section layout-editor">
-        <h2>Layout del evento</h2>
-        <textarea id="layoutJson" placeholder="JSON del layout..."></textarea>
-        <div class="btn-grid">
-          <button class="btn" id="exportLayoutBtn">Exportar</button>
-          <button class="btn" id="importLayoutBtn">Importar</button>
-        </div>
-      </div>
-
-      <div class="section">
-        <h2>Log</h2>
-        <div class="log" id="log"></div>
-      </div>
-    </div>
-  </div>
+    <section class="panel log-panel">
+      <h2>Log</h2>
+      <div id="log" class="log"></div>
+    </section>
+  </main>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="/operator.js"></script>
